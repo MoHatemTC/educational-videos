@@ -27,6 +27,7 @@ htmlcov/
 
 # Misc
 *.ipynb
+*.zip
 
 # Generated result files
 structured-outputs/results/*
