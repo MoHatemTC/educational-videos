@@ -1,3 +1,5 @@
+"""Prompt-chain helpers for converting narration scripts into timelines."""
+
 import json
 from pathlib import Path
 
@@ -6,6 +8,7 @@ from src.validate_repair import validate_or_repair
 
 
 def load_prompt(path: str | Path) -> str:
+    """Load a prompt template from disk."""
     prompt = Path(path).read_text(encoding="utf-8")
 
     if not prompt.strip():
@@ -15,6 +18,7 @@ def load_prompt(path: str | Path) -> str:
 
 
 def segment_script(script: str, llm_client) -> dict:
+    """Segment a narration script using the LLM."""
     template = load_prompt("prompts/segment_script_v1.txt")
 
     prompt = template.replace("{script}", script)
@@ -24,6 +28,7 @@ def segment_script(script: str, llm_client) -> dict:
 
 
 def synthesize_timeline(segments: dict, llm_client) -> str:
+    """Generate timeline JSON from script segments."""
     template = load_prompt("prompts/synthesize_timeline_v1.txt")
 
     prompt = template.replace(
@@ -42,10 +47,11 @@ def synthesize_timeline(segments: dict, llm_client) -> str:
 
 
 def convert_script_to_timeline(
-    script: str,
-    llm_client,
-    max_repair_attempts: int = 2,
+        script: str,
+        llm_client,
+        max_repair_attempts: int = 2,
 ) -> Timeline:
+    """Convert a narration script into a validated timeline."""
     segments = segment_script(script, llm_client)
     raw_timeline = synthesize_timeline(segments, llm_client)
 

@@ -1,3 +1,4 @@
+"""Validation and repair helpers for timeline JSON outputs."""
 import json
 from json import JSONDecodeError
 from pathlib import Path
@@ -13,8 +14,7 @@ class TimelineValidationError(Exception):
 
 
 def parse_json(raw_output: str) -> dict[str, Any]:
-    """
-    Convert an LLM JSON string into a Python dictionary.
+    """Convert an LLM JSON string into a Python dictionary.
 
     Raises:
         JSONDecodeError: if the output is not valid JSON.
@@ -23,8 +23,7 @@ def parse_json(raw_output: str) -> dict[str, Any]:
 
 
 def validate_timeline_data(data: dict[str, Any]) -> Timeline:
-    """
-    Validate Python dictionary data against the Timeline Pydantic schema.
+    """Validate Python dictionary data against the Timeline Pydantic schema.
 
     Raises:
         ValidationError: if the data does not match the schema.
@@ -33,16 +32,14 @@ def validate_timeline_data(data: dict[str, Any]) -> Timeline:
 
 
 def validate_raw_timeline(raw_output: str) -> Timeline:
-    """
-    Parse raw JSON text and validate it as a Timeline.
-    """
+    """Parse raw JSON text and validate it as a Timeline."""
     data = parse_json(raw_output)
     return validate_timeline_data(data)
 
 
 def load_repair_prompt_template() -> str:
-    """
-    Load the repair prompt template from prompts/repair_v1.txt.
+    """Load the repair prompt template.
+
     Falls back to a built-in repair prompt if the file is missing.
     """
     prompt_path = Path("prompts") / "repair_v1.txt"
@@ -75,9 +72,7 @@ def build_repair_prompt(
         bad_output: str,
         error_message: str,
 ) -> str:
-    """
-    Build the repair prompt sent to the LLM.
-    """
+    """Build the repair prompt sent to the LLM."""
     template = load_repair_prompt_template()
 
     schema_json = json.dumps(Timeline.model_json_schema(), indent=2)
@@ -94,8 +89,7 @@ def validate_or_repair(
         llm_client,
         max_repair_attempts: int = 2,
 ) -> Timeline:
-    """
-    Validate an LLM timeline output.
+    """Validate an LLM timeline output.
 
     If the output is invalid JSON or does not match the Pydantic schema,
     this function asks the LLM to repair it, then validates again.

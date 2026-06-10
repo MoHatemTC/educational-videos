@@ -1,5 +1,4 @@
-"""
-LLM client wrapper for the structured-outputs project.
+"""LLM client wrapper for the structured-outputs project.
 
 This file is responsible for talking to an OpenAI-compatible API.
 
@@ -49,8 +48,7 @@ class LLMClientError(Exception):
 
 
 class LLMClient:
-    """
-    Small wrapper around the OpenAI Python SDK.
+    """Small wrapper around the OpenAI Python SDK.
 
     Main job:
         Given a prompt, return JSON text.
@@ -67,8 +65,7 @@ class LLMClient:
             base_url: str | None = None,
             temperature: float = 0.0,
     ) -> None:
-        """
-        Create an LLM client.
+        """Create an LLM client.
 
         Args:
             model: Model name. If None, reads OPENAI_MODEL.
@@ -105,8 +102,7 @@ class LLMClient:
             schema: dict[str, Any] | None = None,
             schema_name: str = "structured_output",
     ) -> str:
-        """
-        Generate JSON text from the LLM.
+        """Generate JSON text from the LLM.
 
         Uses a simple single-message format for better compatibility with
         OpenAI-compatible providers such as Puter.
@@ -171,8 +167,7 @@ class LLMClient:
             schema: dict[str, Any] | None = None,
             schema_name: str = "structured_output",
     ) -> dict[str, Any]:
-        """
-        Generate JSON and parse it into a Python dictionary.
+        """Generate JSON and parse it into a Python dictionary.
 
         This is a convenience method. The main pipeline can still use
         generate_json() when it wants raw text for validation/repair.

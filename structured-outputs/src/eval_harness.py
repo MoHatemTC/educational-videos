@@ -1,5 +1,4 @@
-"""
-Evaluation harness for the structured-outputs project.
+"""Evaluation harness for the structured-outputs project.
 
 This module measures schema-conformance rate.
 
@@ -39,10 +38,9 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from src.schemas import Timeline
 from src.llm_client import LLMClient, LLMClientError
 from src.prompt_chain import convert_script_to_timeline
-
+from src.schemas import Timeline
 
 REQUIRED_EVENT_TYPES = {"type", "run", "highlight", "scroll"}
 
@@ -82,17 +80,16 @@ def extract_event_types(timeline: Timeline) -> set[str]:
 
 def validate_expected_timeline_item(item: dict[str, Any]) -> TimelineEvalResult:
     # noinspection GrazieInspection
-    """
-        Validate one item from expected_timelines.json.
+    """Validate one item from expected_timelines.json.
 
-        Expected format:
-            {
-                "id": "sample_001",
-                "timeline": {
-                    "events": [...]
-                }
+    Expected format:
+        {
+            "id": "sample_001",
+            "timeline": {
+                "events": [...]
             }
-        """
+        }
+    """
     item_id = str(item.get("id", "unknown_id"))
 
     try:
@@ -122,8 +119,7 @@ def validate_expected_timeline_item(item: dict[str, Any]) -> TimelineEvalResult:
 
 
 def validate_sample_script_item(item: dict[str, Any]) -> tuple[str, str]:
-    """
-    Validate one sample script item before sending it to the LLM.
+    """Validate one sample script item before sending it to the LLM.
 
     Expected format:
         {
@@ -162,10 +158,9 @@ def validate_sample_script_item(item: dict[str, Any]) -> tuple[str, str]:
 
 
 def calculate_event_type_coverage(
-    item_results: list[TimelineEvalResult],
+        item_results: list[TimelineEvalResult],
 ) -> dict[str, bool]:
-    """
-    Check whether valid timelines covered all required event types.
+    """Check whether valid timelines covered all required event types.
 
     Invalid timelines do not count toward coverage.
     """
@@ -182,8 +177,8 @@ def calculate_event_type_coverage(
 
 
 def build_summary(
-    mode: str,
-    item_results: list[TimelineEvalResult],
+        mode: str,
+        item_results: list[TimelineEvalResult],
 ) -> EvaluationSummary:
     """Build the final evaluation summary from per-item results."""
     total_items = len(item_results)
@@ -207,8 +202,7 @@ def build_summary(
 
 
 def evaluate_offline(expected_path: Path) -> EvaluationSummary:
-    """
-    Offline evaluation.
+    """Offline evaluation.
 
     This validates already-written expected timelines.
     It does not call OpenAI or Puter.
@@ -227,11 +221,10 @@ def evaluate_offline(expected_path: Path) -> EvaluationSummary:
 
 
 def evaluate_online(
-    input_path: Path,
-    max_repair_attempts: int,
+        input_path: Path,
+        max_repair_attempts: int,
 ) -> EvaluationSummary:
-    """
-    Online evaluation.
+    """Online evaluation.
 
     This loads sample narration scripts, sends them through the LLM pipeline,
     and checks whether the final output conforms to the Timeline schema.
