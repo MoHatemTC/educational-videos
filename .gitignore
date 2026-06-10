@@ -29,5 +29,5 @@ htmlcov/
 *.ipynb
 
 # Generated result files
-results/*
-!results/eval_report.txt
+structured-outputs/results/*
+!structured-outputs/results/eval_report.txt
