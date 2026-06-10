@@ -59,11 +59,11 @@ class LLMClient:
     """
 
     def __init__(
-            self,
-            model: str | None = None,
-            api_key: str | None = None,
-            base_url: str | None = None,
-            temperature: float = 0.0,
+        self,
+        model: str | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        temperature: float = 0.0,
     ) -> None:
         """Create an LLM client.
 
@@ -82,10 +82,7 @@ class LLMClient:
         self.temperature = temperature
 
         if not self.api_key:
-            raise LLMClientError(
-                "OPENAI_API_KEY is missing. "
-                "Create a .env file or set it in your environment."
-            )
+            raise LLMClientError("OPENAI_API_KEY is missing. Create a .env file or set it in your environment.")
 
         client_kwargs: dict[str, Any] = {
             "api_key": self.api_key,
@@ -97,10 +94,10 @@ class LLMClient:
         self.client = OpenAI(**client_kwargs)
 
     def generate_json(
-            self,
-            prompt: str,
-            schema: dict[str, Any] | None = None,
-            schema_name: str = "structured_output",
+        self,
+        prompt: str,
+        schema: dict[str, Any] | None = None,
+        schema_name: str = "structured_output",
     ) -> str:
         """Generate JSON text from the LLM.
 
@@ -162,10 +159,10 @@ class LLMClient:
         return content.strip()
 
     def generate_json_dict(
-            self,
-            prompt: str,
-            schema: dict[str, Any] | None = None,
-            schema_name: str = "structured_output",
+        self,
+        prompt: str,
+        schema: dict[str, Any] | None = None,
+        schema_name: str = "structured_output",
     ) -> dict[str, Any]:
         """Generate JSON and parse it into a Python dictionary.
 
@@ -181,14 +178,9 @@ class LLMClient:
         try:
             parsed = json.loads(raw_output)
         except json.JSONDecodeError as error:
-            raise LLMClientError(
-                f"LLM output was not valid JSON: {error}\n\n"
-                f"Raw output:\n{raw_output}"
-            ) from error
+            raise LLMClientError(f"LLM output was not valid JSON: {error}\n\nRaw output:\n{raw_output}") from error
 
         if not isinstance(parsed, dict):
-            raise LLMClientError(
-                "LLM output must be a JSON object at the top level."
-            )
+            raise LLMClientError("LLM output must be a JSON object at the top level.")
 
         return parsed

@@ -47,9 +47,9 @@ def synthesize_timeline(segments: dict, llm_client) -> str:
 
 
 def convert_script_to_timeline(
-        script: str,
-        llm_client,
-        max_repair_attempts: int = 2,
+    script: str,
+    llm_client,
+    max_repair_attempts: int = 2,
 ) -> Timeline:
     """Convert a narration script into a validated timeline."""
     segments = segment_script(script, llm_client)

@@ -1,4 +1,5 @@
 """Validation and repair helpers for timeline JSON outputs."""
+
 import json
 from json import JSONDecodeError
 from pathlib import Path
@@ -69,8 +70,8 @@ Return the corrected JSON only.
 
 
 def build_repair_prompt(
-        bad_output: str,
-        error_message: str,
+    bad_output: str,
+    error_message: str,
 ) -> str:
     """Build the repair prompt sent to the LLM."""
     template = load_repair_prompt_template()
@@ -85,9 +86,9 @@ def build_repair_prompt(
 
 
 def validate_or_repair(
-        raw_output: str,
-        llm_client,
-        max_repair_attempts: int = 2,
+    raw_output: str,
+    llm_client,
+    max_repair_attempts: int = 2,
 ) -> Timeline:
     """Validate an LLM timeline output.
 

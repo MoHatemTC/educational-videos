@@ -158,7 +158,7 @@ def validate_sample_script_item(item: dict[str, Any]) -> tuple[str, str]:
 
 
 def calculate_event_type_coverage(
-        item_results: list[TimelineEvalResult],
+    item_results: list[TimelineEvalResult],
 ) -> dict[str, bool]:
     """Check whether valid timelines covered all required event types.
 
@@ -170,15 +170,12 @@ def calculate_event_type_coverage(
         if result.is_valid and result.event_types:
             seen_event_types.update(result.event_types)
 
-    return {
-        event_type: event_type in seen_event_types
-        for event_type in sorted(REQUIRED_EVENT_TYPES)
-    }
+    return {event_type: event_type in seen_event_types for event_type in sorted(REQUIRED_EVENT_TYPES)}
 
 
 def build_summary(
-        mode: str,
-        item_results: list[TimelineEvalResult],
+    mode: str,
+    item_results: list[TimelineEvalResult],
 ) -> EvaluationSummary:
     """Build the final evaluation summary from per-item results."""
     total_items = len(item_results)
@@ -212,17 +209,14 @@ def evaluate_offline(expected_path: Path) -> EvaluationSummary:
     if not isinstance(raw_items, list):
         raise ValueError("Expected timelines file must contain a JSON list.")
 
-    item_results = [
-        validate_expected_timeline_item(item)
-        for item in raw_items
-    ]
+    item_results = [validate_expected_timeline_item(item) for item in raw_items]
 
     return build_summary(mode="offline", item_results=item_results)
 
 
 def evaluate_online(
-        input_path: Path,
-        max_repair_attempts: int,
+    input_path: Path,
+    max_repair_attempts: int,
 ) -> EvaluationSummary:
     """Online evaluation.
 
@@ -317,9 +311,7 @@ def write_report(report_text: str, report_path: Path) -> None:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build CLI arguments for the evaluation harness."""
-    parser = argparse.ArgumentParser(
-        description="Evaluate schema conformance of generated timeline JSON."
-    )
+    parser = argparse.ArgumentParser(description="Evaluate schema conformance of generated timeline JSON.")
 
     parser.add_argument(
         "--offline",
