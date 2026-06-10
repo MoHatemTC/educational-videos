@@ -4,10 +4,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from src.eval_harness import evaluate_offline, format_report, write_report
+from src.eval_harness import (
+    evaluate_offline,
+    format_report,
+    load_json_file,
+    validate_expected_timeline_item,
+    write_report,
+)
 from src.prompt_chain import segment_script
 from src.schemas import Timeline
-from src.utils import load_json_file
 
 
 class FakeLLMClient:
@@ -19,10 +24,10 @@ class FakeLLMClient:
         self.calls = 0
 
     def generate_json(
-            self,
-            prompt: str,
-            schema: dict[str, Any] | None = None,
-            schema_name: str = "structured_output",
+        self,
+        prompt: str,
+        schema: dict[str, Any] | None = None,
+        schema_name: str = "structured_output",
     ) -> str:
         """Return the fake JSON response."""
         _ = prompt
@@ -42,15 +47,42 @@ def test_expected_timelines_fixture_is_valid() -> None:
         Timeline.model_validate(item["timeline"])
 
 
-def test_invalid_expected_timelines_fixture_fails_offline() -> None:
-    """The intentionally invalid fixture should fail schema validation."""
-    fixture_path = Path("fixtures/expected_timelines_invalid.json")
-    summary = evaluate_offline(fixture_path)
+def test_invalid_expected_timelines_fail_validation() -> None:
+    """Intentionally invalid expected timelines should fail validation."""
+    invalid_items = [
+        {
+            "id": "bad_time",
+            "timeline": {
+                "events": [
+                    {
+                        "event_type": "type",
+                        "start_ms": 1000,
+                        "end_ms": 1000,
+                        "code": "x = 1",
+                    }
+                ]
+            },
+        },
+        {
+            "id": "bad_type",
+            "timeline": {
+                "events": [
+                    {
+                        "event_type": "zoom",
+                        "start_ms": 0,
+                        "end_ms": 1000,
+                        "target_line": 3,
+                    }
+                ]
+            },
+        },
+    ]
 
-    assert summary.total_items == 5
-    assert summary.valid_items == 0
-    assert summary.failed_items == 5
-    assert summary.schema_conformance_rate == 0.0
+    results = [validate_expected_timeline_item(item) for item in invalid_items]
+
+    assert len(results) == 2
+    assert all(not result.is_valid for result in results)
+    assert all(result.sequence_correct is False for result in results)
 
 
 def test_segmentation_chain_returns_json_array() -> None:
@@ -58,12 +90,12 @@ def test_segmentation_chain_returns_json_array() -> None:
     response = json.dumps(
         [
             {
-                "text": "Define an add function.",
+                "segment_text": "Define an add function.",
                 "event_type": "type",
                 "notes": "Generate a simple add function.",
             },
             {
-                "text": "Run add with two and three.",
+                "segment_text": "Run add with two and three.",
                 "event_type": "run",
                 "notes": "Call add(2, 3).",
             },
@@ -79,7 +111,7 @@ def test_segmentation_chain_returns_json_array() -> None:
 
     assert fake_client.calls == 1
     assert isinstance(segments, list)
-    assert segments[0]["text"] == "Define an add function."
+    assert segments[0]["segment_text"] == "Define an add function."
     assert segments[0]["event_type"] == "type"
     assert segments[0]["notes"] == "Generate a simple add function."
 
@@ -99,6 +131,8 @@ def test_offline_eval_writes_successful_report() -> None:
         assert report_path.exists()
         assert "Structured Outputs Evaluation Report" in saved_report
         assert "Schema conformance rate: 100.00%" in saved_report
+        assert "Mean repair rounds: 0.00" in saved_report
+        assert "Sequence-level accuracy: 100.00%" in saved_report
         assert "- type: yes" in saved_report
         assert "- run: yes" in saved_report
         assert "- highlight: yes" in saved_report

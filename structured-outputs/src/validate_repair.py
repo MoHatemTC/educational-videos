@@ -1,9 +1,10 @@
 """Validation and repair helpers for timeline JSON outputs."""
 
+from __future__ import annotations
+
 import json
-from json import JSONDecodeError
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from pydantic import ValidationError
 
@@ -14,116 +15,67 @@ class TimelineValidationError(Exception):
     """Raised when timeline validation and repair both fail."""
 
 
-def parse_json(raw_output: str) -> dict[str, Any]:
-    """Convert an LLM JSON string into a Python dictionary.
+@dataclass(frozen=True)
+class RepairResult:
+    """Validated timeline plus the number of repair rounds used."""
 
-    Raises:
-        JSONDecodeError: if the output is not valid JSON.
-    """
-    return json.loads(raw_output)
-
-
-def validate_timeline_data(data: dict[str, Any]) -> Timeline:
-    """Validate Python dictionary data against the Timeline Pydantic schema.
-
-    Raises:
-        ValidationError: if the data does not match the schema.
-    """
-    return Timeline.model_validate(data)
+    timeline: Timeline
+    repair_rounds: int
 
 
 def validate_raw_timeline(raw_output: str) -> Timeline:
-    """Validate raw JSON text directly against the Timeline schema.
-
-    Uses Pydantic's model_validate_json so JSON parsing and schema validation
-    happen through Pydantic directly.
-    """
+    """Validate raw JSON text directly against the Timeline schema."""
     return Timeline.model_validate_json(raw_output)
 
 
 def load_repair_prompt_template() -> str:
-    """Load the repair prompt template.
+    """Load the versioned repair prompt template from disk."""
+    prompt_path = Path(__file__).resolve().parents[1] / "prompts" / "repair_v1.txt"
 
-    Falls back to a built-in repair prompt if the file is missing.
-    """
-    prompt_path = Path("prompts") / "repair_v1.txt"
+    if not prompt_path.exists():
+        raise FileNotFoundError(f"Missing repair prompt file: {prompt_path}")
 
-    if prompt_path.exists():
-        return prompt_path.read_text(encoding="utf-8")
+    prompt = prompt_path.read_text(encoding="utf-8")
 
-    return """
-You are repairing a JSON timeline for code animation events.
+    if not prompt.strip():
+        raise ValueError(f"Repair prompt file is empty: {prompt_path}")
 
-The output must be valid JSON only.
-Do not include markdown.
-Do not include explanations.
-Do not include comments.
-
-The JSON must match this schema:
-{schema_json}
-
-Original invalid output:
-{bad_output}
-
-Validation error:
-{error_message}
-
-Return the corrected JSON only.
-""".strip()
+    return prompt
 
 
 def build_repair_prompt(
-        bad_output: str,
-        error_message: str,
-        source_context: str = "",
+    bad_output: str,
+    error_message: str,
+    source_context: str = "",
 ) -> str:
     """Build the repair prompt sent to the LLM."""
     template = load_repair_prompt_template()
-
     schema_json = json.dumps(Timeline.model_json_schema(), indent=2)
 
-    return template.replace("{schema_json}", schema_json).replace(
-        "{bad_output}", bad_output
-    ).replace(
-        "{error_message}", error_message
-    ).replace(
-        "{source_context}", source_context
+    return (
+        template.replace("{schema_json}", schema_json)
+        .replace("{bad_output}", bad_output)
+        .replace("{error_message}", error_message)
+        .replace("{source_context}", source_context)
     )
 
 
-def validate_or_repair(
-        raw_output: str,
-        llm_client,
-        max_repair_attempts: int = 2,
-        source_context: str = "",
-) -> Timeline:
-    """Validate an LLM timeline output.
-
-    If the output is invalid JSON or does not match the Pydantic schema,
-    this function asks the LLM to repair it, then validates again.
-
-    Args:
-        raw_output: Raw JSON text from the LLM.
-        llm_client: Object with a generate_json(prompt: str) -> str method.
-        max_repair_attempts: Number of repair attempts before failing.
-        source_context: Original script or segment context used during repair
-            to prevent semantic drift.
-
-    Returns:
-        A validated Timeline object.
-
-    Raises:
-        TimelineValidationError: if validation still fails after repair attempts.
-    """
+def validate_or_repair_with_stats(
+    raw_output: str,
+    llm_client,
+    max_repair_attempts: int = 2,
+    source_context: str = "",
+) -> RepairResult:
+    """Validate LLM output and repair it while tracking repair rounds."""
     current_output = raw_output
     last_error = None
 
     for attempt in range(max_repair_attempts + 1):
         try:
-            return validate_raw_timeline(current_output)
-
-        except JSONDecodeError as error:
-            last_error = f"Invalid JSON syntax: {error}"
+            return RepairResult(
+                timeline=validate_raw_timeline(current_output),
+                repair_rounds=attempt,
+            )
 
         except ValidationError as error:
             last_error = f"Schema validation failed: {error}"
@@ -145,3 +97,18 @@ def validate_or_repair(
         f"Last error:\n{last_error}\n\n"
         f"Last output:\n{current_output}"
     )
+
+
+def validate_or_repair(
+    raw_output: str,
+    llm_client,
+    max_repair_attempts: int = 2,
+    source_context: str = "",
+) -> Timeline:
+    """Validate an LLM timeline output, repairing it if necessary."""
+    return validate_or_repair_with_stats(
+        raw_output=raw_output,
+        llm_client=llm_client,
+        max_repair_attempts=max_repair_attempts,
+        source_context=source_context,
+    ).timeline

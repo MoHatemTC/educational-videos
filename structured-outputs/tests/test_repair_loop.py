@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from src.schemas import Timeline
-from src.validate_repair import TimelineValidationError, validate_or_repair
+from src.validate_repair import TimelineValidationError, validate_or_repair, validate_or_repair_with_stats
 
 
 class FakeLLMClient:
@@ -175,3 +175,31 @@ def test_repeated_invalid_repairs_raise_error() -> None:
         )
 
     assert fake_client.calls == 2
+
+
+def test_repair_stats_report_repair_rounds() -> None:
+    """Repair stats should report how many repair rounds were used."""
+    bad_output = "{ bad json"
+    repaired_output = """
+    {
+      "events": [
+        {
+          "event_type": "type",
+          "start_ms": 0,
+          "end_ms": 1000,
+          "code": "x = 1"
+        }
+      ]
+    }
+    """
+    fake_client = FakeLLMClient(responses=[repaired_output])
+
+    result = validate_or_repair_with_stats(
+        raw_output=bad_output,
+        llm_client=fake_client,
+        source_context="Original segment: type x equals one.",
+    )
+
+    assert result.timeline.events[0].event_type == "type"
+    assert result.repair_rounds == 1
+    assert "Original segment: type x equals one." in fake_client.prompts[0]

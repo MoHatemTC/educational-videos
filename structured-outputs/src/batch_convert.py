@@ -1,46 +1,60 @@
-"""Batch converter for narration scripts.
-
-This module converts many narration scripts into validated timeline JSON files.
-
-Run from structured-outputs/:
-
-    python -m src.batch_convert
-
-Useful options:
-
-    python -m src.batch_convert --input fixtures/sample_scripts.json
-    python -m src.batch_convert --output results/generated_timelines.json
-    python -m src.batch_convert --failures results/failures.json
-"""
+"""Batch converter for narration scripts."""
 
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from typing import Any
 
 from src.llm_client import LLMClient, LLMClientError
 from src.prompt_chain import convert_script_to_timeline
-from src.utils import load_json_file, validate_script_item, write_json_file
+
+
+def load_json_file(path: Path) -> Any:
+    """Load and parse a JSON file from disk."""
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json_file(path: Path, data: Any) -> None:
+    """Write data to disk as pretty JSON."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def validate_script_item(item: dict[str, Any]) -> tuple[str, str]:
+    """Validate one script item from sample_scripts.json."""
+    if not isinstance(item, dict):
+        raise ValueError("Each script item must be a JSON object.")
+
+    if "id" not in item:
+        raise ValueError("Script item is missing 'id'.")
+
+    if "script" not in item:
+        raise ValueError("Script item is missing 'script'.")
+
+    item_id = item["id"]
+    script = item["script"]
+
+    if not isinstance(item_id, str):
+        raise ValueError("'id' must be a string.")
+
+    if not isinstance(script, str) or not script.strip():
+        raise ValueError("'script' must be a non-empty string.")
+
+    return item_id, script
 
 
 def batch_convert(
-        input_path: Path,
-        output_path: Path,
-        failures_path: Path,
-        max_repair_attempts: int,
+    input_path: Path,
+    output_path: Path,
+    failures_path: Path,
+    max_repair_attempts: int,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Convert a batch of narration scripts into validated timelines.
-
-    Args:
-        input_path: Path to sample_scripts.json.
-        output_path: Path where generated timelines will be saved.
-        failures_path: Path where failed conversions will be saved.
-        max_repair_attempts: Repair attempts allowed per script.
-
-    Returns:
-        (generated_timelines, failures)
-    """
+    """Convert a batch of narration scripts into validated timelines."""
     raw_items = load_json_file(input_path)
 
     if not isinstance(raw_items, list):

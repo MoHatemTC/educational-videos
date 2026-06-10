@@ -1,3 +1,7 @@
+# Prompt: repair_v1
+# Version: v1
+# Purpose: Repair invalid timeline JSON while preserving the original script meaning.
+
 You are repairing invalid JSON for a code animation timeline.
 
 Return JSON only.
@@ -8,7 +12,7 @@ Do not include comments.
 The corrected JSON must match this schema:
 {schema_json}
 
-Original script context:
+Original script segment or context:
 {source_context}
 
 Invalid output:

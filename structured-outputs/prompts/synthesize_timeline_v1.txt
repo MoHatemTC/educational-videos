@@ -1,3 +1,7 @@
+# Prompt: synthesize_timeline_v1
+# Version: v1
+# Purpose: Convert structured script segments into a validated animation timeline.
+
 You are converting narration segments into a strict JSON timeline of code animation events.
 
 Return JSON only.
@@ -7,6 +11,11 @@ Do not include comments.
 
 The output must match this JSON schema:
 {schema_json}
+
+Input segments contain:
+- segment_text
+- event_type
+- notes
 
 Segments:
 {segments_json}
