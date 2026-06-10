@@ -1,0 +1,26 @@
+[
+  {
+    "id": "sample_001",
+    "script": "First define a function called add that takes a and b, then returns their sum. Highlight the return line. Then run add with inputs 2 and 3."
+  },
+  {
+    "id": "sample_002",
+    "script": "Create a list called numbers with the values 1, 2, and 3. Then write a for loop that prints each number. Highlight the loop body. Finally run the script."
+  },
+  {
+    "id": "sample_003",
+    "script": "Define a User class with an initializer that stores the user's name. Create a user named David. Scroll to the object creation line, then highlight the initializer body."
+  },
+  {
+    "id": "sample_004",
+    "script": "Write a function called is_even that returns whether a number is divisible by 2. Run the function with 8, then run it again with 7."
+  },
+  {
+    "id": "sample_005",
+    "script": "Type a dictionary called scores containing Alice with 90 and Bob with 85. Scroll to the dictionary values. Highlight Bob's score."
+  },
+  {
+    "id": "sample_006",
+    "script": "Define a function called greet that returns a greeting message. Highlight the function name. Run greet with the name Sarah."
+  }
+]

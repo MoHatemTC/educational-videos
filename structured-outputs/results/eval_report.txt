@@ -1,0 +1,21 @@
+Structured Outputs Evaluation Report
+============================================
+Mode: online
+Total items: 6
+Valid timelines: 6
+Failed timelines: 0
+Schema conformance rate: 100.00%
+
+Event type coverage:
+- highlight: yes
+- run: yes
+- scroll: yes
+- type: yes
+
+Per-item results:
+- sample_001: valid
+- sample_002: valid
+- sample_003: valid
+- sample_004: valid
+- sample_005: valid
+- sample_006: valid
