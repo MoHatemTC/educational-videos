@@ -1,0 +1,85 @@
+[
+  {
+    "id": "sample_001",
+    "timeline": {
+      "events": [
+        {
+          "event_type": "type",
+          "code": "def add(a, b):\n    return a + b"
+        },
+        {
+          "event_type": "highlight",
+          "start_line": 2,
+          "end_line": 2
+        },
+        {
+          "event_type": "run",
+          "command": "add(2, 3)",
+          "expected_output": "5"
+        }
+      ]
+    }
+  },
+  {
+    "id": "sample_002",
+    "timeline": {
+      "events": [
+        {
+          "event_type": "type",
+          "code": "numbers = [1, 2, 3]\nfor number in numbers:\n    print(number)"
+        },
+        {
+          "event_type": "highlight",
+          "start_line": 2,
+          "end_line": 3
+        },
+        {
+          "event_type": "run",
+          "command": "python loop_example.py",
+          "expected_output": "1\n2\n3"
+        }
+      ]
+    }
+  },
+  {
+    "id": "sample_003",
+    "timeline": {
+      "events": [
+        {
+          "event_type": "type",
+          "code": "class User:\n    def __init__(self, name):\n        self.name = name\n\nuser = User('David')"
+        },
+        {
+          "event_type": "scroll",
+          "target_line": 4
+        },
+        {
+          "event_type": "highlight",
+          "start_line": 2,
+          "end_line": 3
+        }
+      ]
+    }
+  },
+  {
+    "id": "sample_004",
+    "timeline": {
+      "events": [
+        {
+          "event_type": "type",
+          "code": "def is_even(number):\n    return number % 2 == 0"
+        },
+        {
+          "event_type": "run",
+          "command": "is_even(8)",
+          "expected_output": "True"
+        },
+        {
+          "event_type": "run",
+          "command": "is_even(7)",
+          "expected_output": "False"
+        }
+      ]
+    }
+  }
+]

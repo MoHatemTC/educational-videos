@@ -1,0 +1,23 @@
+You are converting narration segments into a strict JSON timeline of code animation events.
+
+Return JSON only.
+Do not include markdown.
+Do not include explanations.
+Do not include comments.
+
+The output must match this JSON schema:
+{schema_json}
+
+Segments:
+{segments_json}
+
+Rules:
+- Use event_type exactly as one of: type, run, highlight, scroll.
+- type events must include code.
+- run events must include command and may include expected_output.
+- highlight events must include start_line and end_line.
+- scroll events must include target_line.
+- Line numbers must be positive integers.
+- Do not add extra fields.
+
+Return only the final JSON timeline.
