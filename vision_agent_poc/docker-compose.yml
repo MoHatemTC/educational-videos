@@ -1,0 +1,14 @@
+services:
+  vision-agent:
+    build: .
+    # Loads LITELLM_*, DEFAULT_MODEL, VLM_PROVIDER, USE_VISION from your .env
+    env_file:
+      - .env
+    environment:
+      # Always headless in a container (overrides anything in .env).
+      - HEADLESS=true
+    # Chromium can crash with the default 64MB /dev/shm; give it room.
+    shm_size: "2gb"
+    # Screenshots + run.gif written here land in ./output on your host.
+    volumes:
+      - ./output:/app/output

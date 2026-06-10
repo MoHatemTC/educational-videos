@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.git
+.gitignore
+README.md
+# NOTE: .env is intentionally NOT ignored if you rely on env_file in compose,
+# but it is loaded by docker compose, not baked into the image. The build only
+# COPYs code; secrets arrive at runtime via env_file.
+.env
