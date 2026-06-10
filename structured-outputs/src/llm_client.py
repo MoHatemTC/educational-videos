@@ -1,9 +1,9 @@
-"""LLM client wrapper for the structured-outputs project.
+"""LiteLLM client wrapper for the structured-outputs project.
 
-This file is responsible for talking to an OpenAI-compatible API.
+This file is responsible for calling the shared Sprint LiteLLM endpoint.
 
-The rest of the project should NOT directly call OpenAI.
-Instead, other files should call:
+The rest of the project should not directly call the OpenAI SDK.
+Instead, use:
 
     llm_client.generate_json(prompt)
 
@@ -11,22 +11,11 @@ or:
 
     llm_client.generate_json(prompt, schema=Timeline.model_json_schema())
 
-Environment variables used:
+Environment variables expected in .env:
 
-    OPENAI_API_KEY   Required. Your API key or compatible provider token.
-    OPENAI_MODEL     Optional. Defaults to gpt-4o-mini.
-    OPENAI_BASE_URL  Optional. Use only for OpenAI-compatible providers.
-
-Example official OpenAI setup:
-
-    OPENAI_API_KEY=sk-...
-    OPENAI_MODEL=gpt-4o-mini
-
-Example OpenAI-compatible setup:
-
-    OPENAI_API_KEY=your_provider_token
-    OPENAI_MODEL=provider_model_name
-    OPENAI_BASE_URL=https://example.com/openai/v1/
+    LITELLM_BASE_URL   Required. Base URL for the LiteLLM proxy.
+    LITELLM_API_KEY    Required. Shared API key from Sprints.
+    DEFAULT_MODEL      Required. Azure/LiteLLM model name from Sprints.
 """
 
 from __future__ import annotations
@@ -48,14 +37,13 @@ class LLMClientError(Exception):
 
 
 class LLMClient:
-    """Small wrapper around the OpenAI Python SDK.
+    """Small wrapper around an OpenAI-compatible LiteLLM endpoint.
 
-    Main job:
-        Given a prompt, return JSON text.
+    Main responsibility:
+        Given a prompt, return JSON text from the model.
 
-    Why this exists:
-        It keeps API details isolated in one file.
-        prompt_chain.py should not care about OpenAI syntax.
+    This keeps API details isolated from prompt_chain.py, eval_harness.py,
+    and validate_repair.py.
     """
 
     def __init__(
@@ -65,33 +53,43 @@ class LLMClient:
         base_url: str | None = None,
         temperature: float = 0.0,
     ) -> None:
-        """Create an LLM client.
+        """Initialize the LiteLLM client.
 
         Args:
-            model: Model name. If None, reads OPENAI_MODEL.
-            api_key: API key. If None, reads OPENAI_API_KEY.
-            base_url: Optional OpenAI-compatible base URL.
-            temperature: Lower values make output more deterministic.
+            model: Optional model override. Defaults to DEFAULT_MODEL.
+            api_key: Optional key override. Defaults to LITELLM_API_KEY.
+            base_url: Optional base URL override. Defaults to LITELLM_BASE_URL.
+            temperature: Low temperature keeps JSON output more stable.
         """
         if load_dotenv is not None:
             load_dotenv()
 
-        self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.base_url = base_url or os.getenv("OPENAI_BASE_URL")
+        self.model = model or os.getenv("DEFAULT_MODEL")
+        self.api_key = api_key or os.getenv("LITELLM_API_KEY")
+        self.base_url = base_url or os.getenv("LITELLM_BASE_URL")
         self.temperature = temperature
 
+        missing: list[str] = []
+
+        if not self.model:
+            missing.append("DEFAULT_MODEL")
+
         if not self.api_key:
-            raise LLMClientError("OPENAI_API_KEY is missing. Create a .env file or set it in your environment.")
+            missing.append("LITELLM_API_KEY")
 
-        client_kwargs: dict[str, Any] = {
-            "api_key": self.api_key,
-        }
+        if not self.base_url:
+            missing.append("LITELLM_BASE_URL")
 
-        if self.base_url:
-            client_kwargs["base_url"] = self.base_url
+        if missing:
+            raise LLMClientError(
+                "Missing required environment variable(s): "
+                + ", ".join(missing)
+            )
 
-        self.client = OpenAI(**client_kwargs)
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url,
+        )
 
     def generate_json(
         self,
@@ -101,8 +99,16 @@ class LLMClient:
     ) -> str:
         """Generate JSON text from the LLM.
 
-        Uses a simple single-message format for better compatibility with
-        OpenAI-compatible providers such as Puter.
+        Args:
+            prompt: Full prompt sent to the model.
+            schema: Optional JSON Schema for schema-constrained decoding.
+            schema_name: Name used for the response_format schema.
+
+        Returns:
+            Raw JSON string returned by the model.
+
+        Raises:
+            LLMClientError: If prompt is empty, API call fails, or response is empty.
         """
         if not isinstance(prompt, str) or not prompt.strip():
             raise LLMClientError("Prompt must be a non-empty string.")
@@ -116,40 +122,37 @@ class LLMClient:
             f"{prompt}"
         )
 
-        request_kwargs: dict[str, Any] = {
-            "model": self.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": full_prompt,
-                }
-            ],
-            "temperature": self.temperature,
-        }
-
-        # Official OpenAI supports response_format=json_schema.
-        # Some OpenAI-compatible providers may not fully support it.
-        use_response_format = os.getenv("OPENAI_USE_RESPONSE_FORMAT", "true").lower()
-
-        if use_response_format == "true":
-            if schema is not None:
-                request_kwargs["response_format"] = {
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": schema_name,
-                        "schema": schema,
-                        "strict": True,
-                    },
-                }
-            else:
-                request_kwargs["response_format"] = {
-                    "type": "json_object",
-                }
+        request_kwargs = self._build_request_kwargs(
+            prompt=full_prompt,
+            schema=schema,
+            schema_name=schema_name,
+            use_response_format=self._should_use_response_format(),
+        )
 
         try:
             response = self.client.chat.completions.create(**request_kwargs)
-        except Exception as error:
-            raise LLMClientError(f"LLM API call failed: {error}") from error
+        except Exception as first_error:
+            if schema is None:
+                raise LLMClientError(
+                    f"LLM API call failed: {first_error}"
+                ) from first_error
+
+            fallback_kwargs = self._build_request_kwargs(
+                prompt=full_prompt,
+                schema=None,
+                schema_name=schema_name,
+                use_response_format=False,
+            )
+
+            try:
+                response = self.client.chat.completions.create(**fallback_kwargs)
+            except Exception as second_error:
+                raise LLMClientError(
+                    "LLM API call failed with schema-constrained decoding, "
+                    "then failed again without response_format.\n\n"
+                    f"First error: {first_error}\n"
+                    f"Second error: {second_error}"
+                ) from second_error
 
         content = response.choices[0].message.content
 
@@ -166,8 +169,8 @@ class LLMClient:
     ) -> dict[str, Any]:
         """Generate JSON and parse it into a Python dictionary.
 
-        This is a convenience method. The main pipeline can still use
-        generate_json() when it wants raw text for validation/repair.
+        This is a convenience method. The main pipeline usually keeps raw text
+        so validate_repair.py can handle JSON parsing and repair.
         """
         raw_output = self.generate_json(
             prompt=prompt,
@@ -178,9 +181,58 @@ class LLMClient:
         try:
             parsed = json.loads(raw_output)
         except json.JSONDecodeError as error:
-            raise LLMClientError(f"LLM output was not valid JSON: {error}\n\nRaw output:\n{raw_output}") from error
+            raise LLMClientError(
+                f"LLM output was not valid JSON: {error}\n\n"
+                f"Raw output:\n{raw_output}"
+            ) from error
 
         if not isinstance(parsed, dict):
-            raise LLMClientError("LLM output must be a JSON object at the top level.")
+            raise LLMClientError("LLM output must be a JSON object.")
 
         return parsed
+
+    def _build_request_kwargs(
+        self,
+        prompt: str,
+        schema: dict[str, Any] | None,
+        schema_name: str,
+        use_response_format: bool,
+    ) -> dict[str, Any]:
+        """Build kwargs for the OpenAI-compatible chat completion request."""
+        request_kwargs: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            "temperature": self.temperature,
+        }
+
+        if use_response_format:
+            if schema is not None:
+                request_kwargs["response_format"] = {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": schema_name,
+                        "schema": schema,
+                        "strict": True,
+                    },
+                }
+            else:
+                request_kwargs["response_format"] = {
+                    "type": "json_object",
+                }
+
+        return request_kwargs
+
+    @staticmethod
+    def _should_use_response_format() -> bool:
+        """Decide whether to send response_format to LiteLLM.
+
+        Defaults to true because the sprint requires schema-constrained decoding.
+        Set LITELLM_USE_RESPONSE_FORMAT=false only if the backend rejects it.
+        """
+        value = os.getenv("LITELLM_USE_RESPONSE_FORMAT", "true")
+        return value.strip().lower() not in {"false", "0", "no"}

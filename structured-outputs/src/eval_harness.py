@@ -23,9 +23,9 @@ It supports two modes:
 
 Important:
     Online mode requires a valid .env file with:
-        OPENAI_API_KEY
-        OPENAI_MODEL
-        OPENAI_BASE_URL
+        LITELLM_BASE_URL   Required. Base URL for the LiteLLM proxy.
+        LITELLM_API_KEY    Required. Shared API key from Sprints.
+        DEFAULT_MODEL      Required. Azure/LiteLLM model name from Sprints.
 """
 
 from __future__ import annotations
@@ -41,6 +41,8 @@ from pydantic import ValidationError
 from src.llm_client import LLMClient, LLMClientError
 from src.prompt_chain import convert_script_to_timeline
 from src.schemas import Timeline
+from src.utils import load_json_file, validate_script_item, extract_event_types
+from src.validate_repair import validate_or_repair
 
 REQUIRED_EVENT_TYPES = {"type", "run", "highlight", "scroll"}
 
@@ -66,16 +68,6 @@ class EvaluationSummary:
     schema_conformance_rate: float
     event_type_coverage: dict[str, bool]
     item_results: list[TimelineEvalResult]
-
-
-def load_json_file(path: Path) -> Any:
-    """Load and parse a JSON file."""
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def extract_event_types(timeline: Timeline) -> set[str]:
-    """Return all event types used in a validated Timeline."""
-    return {event.event_type for event in timeline.events}
 
 
 def validate_expected_timeline_item(item: dict[str, Any]) -> TimelineEvalResult:
@@ -118,47 +110,8 @@ def validate_expected_timeline_item(item: dict[str, Any]) -> TimelineEvalResult:
         )
 
 
-def validate_sample_script_item(item: dict[str, Any]) -> tuple[str, str]:
-    """Validate one sample script item before sending it to the LLM.
-
-    Expected format:
-        {
-            "id": "sample_001",
-            "script": "..."
-        }
-
-    Returns:
-        (item_id, script)
-
-    Raises:
-        ValueError: if the item is malformed.
-    """
-    if not isinstance(item, dict):
-        raise ValueError("Sample script item must be a JSON object.")
-
-    if "id" not in item:
-        raise ValueError("Sample script item is missing 'id'.")
-
-    if "script" not in item:
-        raise ValueError("Sample script item is missing 'script'.")
-
-    item_id = item["id"]
-    script = item["script"]
-
-    if not isinstance(item_id, str):
-        raise ValueError("'id' must be a string.")
-
-    if not isinstance(script, str):
-        raise ValueError("'script' must be a string.")
-
-    if not script.strip():
-        raise ValueError("'script' must not be empty.")
-
-    return item_id, script
-
-
 def calculate_event_type_coverage(
-    item_results: list[TimelineEvalResult],
+        item_results: list[TimelineEvalResult],
 ) -> dict[str, bool]:
     """Check whether valid timelines covered all required event types.
 
@@ -174,8 +127,8 @@ def calculate_event_type_coverage(
 
 
 def build_summary(
-    mode: str,
-    item_results: list[TimelineEvalResult],
+        mode: str,
+        item_results: list[TimelineEvalResult],
 ) -> EvaluationSummary:
     """Build the final evaluation summary from per-item results."""
     total_items = len(item_results)
@@ -215,8 +168,8 @@ def evaluate_offline(expected_path: Path) -> EvaluationSummary:
 
 
 def evaluate_online(
-    input_path: Path,
-    max_repair_attempts: int,
+        input_path: Path,
+        max_repair_attempts: int,
 ) -> EvaluationSummary:
     """Online evaluation.
 
@@ -239,8 +192,7 @@ def evaluate_online(
 
     for item in raw_items:
         try:
-            item_id, script = validate_sample_script_item(item)
-
+            item_id, script = validate_script_item(item)
             timeline = convert_script_to_timeline(
                 script=script,
                 llm_client=llm_client,
@@ -268,6 +220,74 @@ def evaluate_online(
             )
 
     return build_summary(mode="online", item_results=item_results)
+
+
+def evaluate_repair_expected(
+        expected_path: Path,
+        max_repair_attempts: int,
+) -> EvaluationSummary:
+    """Evaluate the validation-and-repair loop using intentionally invalid timelines.
+
+    This mode loads bad timeline JSON from expected_timelines_invalid.json,
+    sends each broken timeline through validate_or_repair(), and checks whether
+    the LLM can repair it into a schema-conformant Timeline.
+    """
+    raw_items = load_json_file(expected_path)
+
+    if not isinstance(raw_items, list):
+        raise ValueError("Expected timelines file must contain a JSON list.")
+
+    try:
+        llm_client = LLMClient()
+    except LLMClientError as error:
+        raise RuntimeError(f"Could not initialize LLM client: {error}") from error
+
+    item_results: list[TimelineEvalResult] = []
+
+    for item in raw_items:
+        item_id = (
+            str(item.get("id", "unknown_id"))
+            if isinstance(item, dict)
+            else "unknown_id"
+        )
+
+        try:
+            if not isinstance(item, dict):
+                raise ValueError("Timeline item must be a JSON object.")
+
+            if "timeline" not in item:
+                raise ValueError("Timeline item is missing 'timeline'.")
+
+            bad_timeline_json = json.dumps(item["timeline"], indent=2)
+
+            repaired_timeline = validate_or_repair(
+                raw_output=bad_timeline_json,
+                llm_client=llm_client,
+                max_repair_attempts=max_repair_attempts,
+            )
+
+            item_results.append(
+                TimelineEvalResult(
+                    item_id=item_id,
+                    is_valid=True,
+                    event_types=extract_event_types(repaired_timeline),
+                )
+            )
+
+        except Exception as error:
+            item_results.append(
+                TimelineEvalResult(
+                    item_id=item_id,
+                    is_valid=False,
+                    error_message=str(error),
+                    event_types=set(),
+                )
+            )
+
+    return build_summary(
+        mode="repair-online",
+        item_results=item_results,
+    )
 
 
 def format_report(summary: EvaluationSummary) -> str:
@@ -344,6 +364,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Maximum number of repair attempts during online evaluation.",
     )
 
+    parser.add_argument(
+        "--repair-expected",
+        action="store_true",
+        help="Send expected timeline JSON through the LLM repair loop.",
+    )
+
     return parser
 
 
@@ -356,6 +382,13 @@ def main() -> None:
         summary = evaluate_offline(
             expected_path=Path(args.expected),
         )
+
+    elif args.repair_expected:
+        summary = evaluate_repair_expected(
+            expected_path=Path(args.expected),
+            max_repair_attempts=args.max_repair_attempts,
+        )
+
     else:
         summary = evaluate_online(
             input_path=Path(args.input),
