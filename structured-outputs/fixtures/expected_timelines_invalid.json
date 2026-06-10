@@ -4,7 +4,9 @@
     "timeline": {
       "events": [
         {
-          "event_type": "type"
+          "event_type": "type",
+          "start_ms": 0,
+          "end_ms": 1000
         }
       ]
     }
@@ -15,6 +17,8 @@
       "events": [
         {
           "event_type": "zoom",
+          "start_ms": 0,
+          "end_ms": 1000,
           "target_line": 5
         }
       ]
@@ -26,6 +30,8 @@
       "events": [
         {
           "event_type": "highlight",
+          "start_ms": 0,
+          "end_ms": 1000,
           "start_line": 5,
           "end_line": 2
         }
@@ -33,12 +39,14 @@
     }
   },
   {
-    "id": "bad_004_zero_scroll_line",
+    "id": "bad_004_invalid_time_range",
     "timeline": {
       "events": [
         {
           "event_type": "scroll",
-          "target_line": 0
+          "start_ms": 1000,
+          "end_ms": 1000,
+          "target_line": 3
         }
       ]
     }
@@ -49,6 +57,8 @@
       "events": [
         {
           "event_type": "run",
+          "start_ms": 0,
+          "end_ms": 1000,
           "command": "print('hello')",
           "expected_output": "hello",
           "duration": 3

@@ -1,10 +1,36 @@
-"""Integration tests for fixtures and offline evaluation."""
+"""Integration tests for fixtures, segmentation, and offline evaluation."""
 
+import json
 from pathlib import Path
+from typing import Any
 
 from src.eval_harness import evaluate_offline, format_report, write_report
+from src.prompt_chain import segment_script
 from src.schemas import Timeline
 from src.utils import load_json_file
+
+
+class FakeLLMClient:
+    """Fake LLM client used to test prompt-chain behavior without API calls."""
+
+    def __init__(self, response: str) -> None:
+        """Store a single fake response."""
+        self.response = response
+        self.calls = 0
+
+    def generate_json(
+            self,
+            prompt: str,
+            schema: dict[str, Any] | None = None,
+            schema_name: str = "structured_output",
+    ) -> str:
+        """Return the fake JSON response."""
+        _ = prompt
+        _ = schema
+        _ = schema_name
+
+        self.calls += 1
+        return self.response
 
 
 def test_expected_timelines_fixture_is_valid() -> None:
@@ -25,6 +51,37 @@ def test_invalid_expected_timelines_fixture_fails_offline() -> None:
     assert summary.valid_items == 0
     assert summary.failed_items == 5
     assert summary.schema_conformance_rate == 0.0
+
+
+def test_segmentation_chain_returns_json_array() -> None:
+    """Segmentation should return the required JSON array format."""
+    response = json.dumps(
+        [
+            {
+                "text": "Define an add function.",
+                "event_type": "type",
+                "notes": "Generate a simple add function.",
+            },
+            {
+                "text": "Run add with two and three.",
+                "event_type": "run",
+                "notes": "Call add(2, 3).",
+            },
+        ]
+    )
+
+    fake_client = FakeLLMClient(response=response)
+
+    segments = segment_script(
+        script="Define an add function, then run it.",
+        llm_client=fake_client,
+    )
+
+    assert fake_client.calls == 1
+    assert isinstance(segments, list)
+    assert segments[0]["text"] == "Define an add function."
+    assert segments[0]["event_type"] == "type"
+    assert segments[0]["notes"] == "Generate a simple add function."
 
 
 def test_offline_eval_writes_successful_report() -> None:

@@ -33,9 +33,12 @@ def validate_timeline_data(data: dict[str, Any]) -> Timeline:
 
 
 def validate_raw_timeline(raw_output: str) -> Timeline:
-    """Parse raw JSON text and validate it as a Timeline."""
-    data = parse_json(raw_output)
-    return validate_timeline_data(data)
+    """Validate raw JSON text directly against the Timeline schema.
+
+    Uses Pydantic's model_validate_json so JSON parsing and schema validation
+    happen through Pydantic directly.
+    """
+    return Timeline.model_validate_json(raw_output)
 
 
 def load_repair_prompt_template() -> str:
@@ -70,25 +73,29 @@ Return the corrected JSON only.
 
 
 def build_repair_prompt(
-    bad_output: str,
-    error_message: str,
+        bad_output: str,
+        error_message: str,
+        source_context: str = "",
 ) -> str:
     """Build the repair prompt sent to the LLM."""
     template = load_repair_prompt_template()
 
     schema_json = json.dumps(Timeline.model_json_schema(), indent=2)
 
-    return template.format(
-        schema_json=schema_json,
-        bad_output=bad_output,
-        error_message=error_message,
+    return template.replace("{schema_json}", schema_json).replace(
+        "{bad_output}", bad_output
+    ).replace(
+        "{error_message}", error_message
+    ).replace(
+        "{source_context}", source_context
     )
 
 
 def validate_or_repair(
-    raw_output: str,
-    llm_client,
-    max_repair_attempts: int = 2,
+        raw_output: str,
+        llm_client,
+        max_repair_attempts: int = 2,
+        source_context: str = "",
 ) -> Timeline:
     """Validate an LLM timeline output.
 
@@ -99,6 +106,8 @@ def validate_or_repair(
         raw_output: Raw JSON text from the LLM.
         llm_client: Object with a generate_json(prompt: str) -> str method.
         max_repair_attempts: Number of repair attempts before failing.
+        source_context: Original script or segment context used during repair
+            to prevent semantic drift.
 
     Returns:
         A validated Timeline object.
@@ -125,6 +134,7 @@ def validate_or_repair(
         repair_prompt = build_repair_prompt(
             bad_output=current_output,
             error_message=last_error,
+            source_context=source_context,
         )
 
         current_output = llm_client.generate_json(repair_prompt)

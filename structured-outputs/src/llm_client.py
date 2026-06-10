@@ -47,11 +47,11 @@ class LLMClient:
     """
 
     def __init__(
-        self,
-        model: str | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
-        temperature: float = 0.0,
+            self,
+            model: str | None = None,
+            api_key: str | None = None,
+            base_url: str | None = None,
+            temperature: float = 0.0,
     ) -> None:
         """Initialize the LiteLLM client.
 
@@ -92,10 +92,10 @@ class LLMClient:
         )
 
     def generate_json(
-        self,
-        prompt: str,
-        schema: dict[str, Any] | None = None,
-        schema_name: str = "structured_output",
+            self,
+            prompt: str,
+            schema: dict[str, Any] | None = None,
+            schema_name: str = "structured_output",
     ) -> str:
         """Generate JSON text from the LLM.
 
@@ -162,10 +162,10 @@ class LLMClient:
         return content.strip()
 
     def generate_json_dict(
-        self,
-        prompt: str,
-        schema: dict[str, Any] | None = None,
-        schema_name: str = "structured_output",
+            self,
+            prompt: str,
+            schema: dict[str, Any] | None = None,
+            schema_name: str = "structured_output",
     ) -> dict[str, Any]:
         """Generate JSON and parse it into a Python dictionary.
 
@@ -192,11 +192,11 @@ class LLMClient:
         return parsed
 
     def _build_request_kwargs(
-        self,
-        prompt: str,
-        schema: dict[str, Any] | None,
-        schema_name: str,
-        use_response_format: bool,
+            self,
+            prompt: str,
+            schema: dict[str, Any] | None,
+            schema_name: str,
+            use_response_format: bool,
     ) -> dict[str, Any]:
         """Build kwargs for the OpenAI-compatible chat completion request."""
         request_kwargs: dict[str, Any] = {

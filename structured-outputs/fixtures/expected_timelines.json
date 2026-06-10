@@ -5,15 +5,21 @@
       "events": [
         {
           "event_type": "type",
+          "start_ms": 0,
+          "end_ms": 1200,
           "code": "def add(a, b):\n    return a + b"
         },
         {
           "event_type": "highlight",
+          "start_ms": 1200,
+          "end_ms": 1800,
           "start_line": 2,
           "end_line": 2
         },
         {
           "event_type": "run",
+          "start_ms": 1800,
+          "end_ms": 2600,
           "command": "add(2, 3)",
           "expected_output": "5"
         }
@@ -26,15 +32,21 @@
       "events": [
         {
           "event_type": "type",
+          "start_ms": 0,
+          "end_ms": 1800,
           "code": "numbers = [1, 2, 3]\nfor number in numbers:\n    print(number)"
         },
         {
           "event_type": "highlight",
+          "start_ms": 1800,
+          "end_ms": 2400,
           "start_line": 2,
           "end_line": 3
         },
         {
           "event_type": "run",
+          "start_ms": 2400,
+          "end_ms": 3400,
           "command": "python loop_example.py",
           "expected_output": "1\n2\n3"
         }
@@ -47,14 +59,20 @@
       "events": [
         {
           "event_type": "type",
+          "start_ms": 0,
+          "end_ms": 2200,
           "code": "class User:\n    def __init__(self, name):\n        self.name = name\n\nuser = User('David')"
         },
         {
           "event_type": "scroll",
-          "target_line": 4
+          "start_ms": 2200,
+          "end_ms": 2800,
+          "target_line": 5
         },
         {
           "event_type": "highlight",
+          "start_ms": 2800,
+          "end_ms": 3600,
           "start_line": 2,
           "end_line": 3
         }
@@ -67,15 +85,21 @@
       "events": [
         {
           "event_type": "type",
+          "start_ms": 0,
+          "end_ms": 1400,
           "code": "def is_even(number):\n    return number % 2 == 0"
         },
         {
           "event_type": "run",
+          "start_ms": 1400,
+          "end_ms": 2200,
           "command": "is_even(8)",
           "expected_output": "True"
         },
         {
           "event_type": "run",
+          "start_ms": 2200,
+          "end_ms": 3000,
           "command": "is_even(7)",
           "expected_output": "False"
         }
