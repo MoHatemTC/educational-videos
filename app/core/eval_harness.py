@@ -10,9 +10,9 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from src.prompt_chain import convert_script_to_timeline_with_stats
-from src.schemas import Timeline
-from src.validate_repair import validate_or_repair_with_stats
+from app.core.prompt_chain import convert_script_to_timeline_with_stats
+from app.core.schemas import Timeline
+from app.core.validate_repair import validate_or_repair_with_stats
 
 REQUIRED_EVENT_TYPES = {"type", "run", "highlight", "scroll"}
 
@@ -155,25 +155,28 @@ def calculate_event_type_coverage(
         if result.is_valid and result.event_types:
             seen_event_types.update(result.event_types)
 
-    return {
-        event_type: event_type in seen_event_types
-        for event_type in sorted(REQUIRED_EVENT_TYPES)
-    }
+    return {event_type: event_type in seen_event_types for event_type in sorted(REQUIRED_EVENT_TYPES)}
 
 
 def calculate_sequence_level_accuracy(
     item_results: list[TimelineEvalResult],
 ) -> float | None:
     """Calculate percentage of items with the correct event-type sequence."""
-    comparable_results = [
-        result for result in item_results if result.sequence_correct is not None
-    ]
+    total_comparable = 0
+    correct_items = 0
 
-    if not comparable_results:
+    for result in item_results:
+        if result.sequence_correct is None:
+            continue
+
+        total_comparable += 1
+        if result.sequence_correct:
+            correct_items += 1
+
+    if total_comparable == 0:
         return None
 
-    correct_items = sum(result.sequence_correct for result in comparable_results)
-    return (correct_items / len(comparable_results)) * 100
+    return (correct_items / total_comparable) * 100
 
 
 def build_summary(
@@ -186,11 +189,7 @@ def build_summary(
     failed_items = total_items - valid_items
 
     schema_conformance_rate = (valid_items / total_items) * 100 if total_items else 0.0
-    mean_repair_rounds = (
-        sum(result.repair_rounds for result in item_results) / total_items
-        if total_items
-        else 0.0
-    )
+    mean_repair_rounds = sum(result.repair_rounds for result in item_results) / total_items if total_items else 0.0
 
     return EvaluationSummary(
         mode=mode,
@@ -223,7 +222,7 @@ def evaluate_online(
     expected_path: Path | None = None,
 ) -> EvaluationSummary:
     """Evaluate sample scripts through the live LLM pipeline."""
-    from src.llm_client import LLMClient, LLMClientError
+    from app.core.llm_client import LLMClient, LLMClientError
 
     raw_items = load_json_file(input_path)
 
@@ -250,11 +249,7 @@ def evaluate_online(
 
             predicted_sequence = event_sequence(timeline)
             expected_sequence = expected_sequences.get(item_id)
-            sequence_correct = (
-                predicted_sequence == expected_sequence
-                if expected_sequence is not None
-                else None
-            )
+            sequence_correct = predicted_sequence == expected_sequence if expected_sequence is not None else None
 
             item_results.append(
                 TimelineEvalResult(
@@ -267,11 +262,7 @@ def evaluate_online(
             )
 
         except Exception as error:
-            item_id = (
-                str(item.get("id", "unknown_id"))
-                if isinstance(item, dict)
-                else "unknown_id"
-            )
+            item_id = str(item.get("id", "unknown_id")) if isinstance(item, dict) else "unknown_id"
 
             item_results.append(
                 TimelineEvalResult(
@@ -291,7 +282,7 @@ def evaluate_repair_expected(
     max_repair_attempts: int,
 ) -> EvaluationSummary:
     """Evaluate the validation-and-repair loop using broken timeline JSON."""
-    from src.llm_client import LLMClient, LLMClientError
+    from app.core.llm_client import LLMClient, LLMClientError
 
     raw_items = load_json_file(expected_path)
 
@@ -306,9 +297,7 @@ def evaluate_repair_expected(
     item_results: list[TimelineEvalResult] = []
 
     for item in raw_items:
-        item_id = (
-            str(item.get("id", "unknown_id")) if isinstance(item, dict) else "unknown_id"
-        )
+        item_id = str(item.get("id", "unknown_id")) if isinstance(item, dict) else "unknown_id"
 
         try:
             if not isinstance(item, dict):
@@ -379,13 +368,9 @@ def format_report(summary: EvaluationSummary) -> str:
 
     for result in summary.item_results:
         if result.is_valid:
-            sequence_status = (
-                "n/a" if result.sequence_correct is None else str(result.sequence_correct)
-            )
+            sequence_status = "n/a" if result.sequence_correct is None else str(result.sequence_correct)
             lines.append(
-                f"- {result.item_id}: valid "
-                f"(repair_rounds={result.repair_rounds}, "
-                f"sequence_correct={sequence_status})"
+                f"- {result.item_id}: valid (repair_rounds={result.repair_rounds}, sequence_correct={sequence_status})"
             )
         else:
             lines.append(f"- {result.item_id}: invalid")
@@ -402,9 +387,7 @@ def write_report(report_text: str, report_path: Path) -> None:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build CLI arguments for the evaluation harness."""
-    parser = argparse.ArgumentParser(
-        description="Evaluate schema conformance of generated timeline JSON."
-    )
+    parser = argparse.ArgumentParser(description="Evaluate schema conformance of generated timeline JSON.")
 
     parser.add_argument(
         "--offline",
@@ -414,13 +397,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--input",
-        default="fixtures/sample_scripts.json",
+        default="tests/fixtures/sample_scripts.json",
         help="Path to sample scripts JSON file for online evaluation.",
     )
 
     parser.add_argument(
         "--expected",
-        default="fixtures/expected_timelines.json",
+        default="tests/fixtures/expected_timelines.json",
         help="Path to expected timelines JSON file for evaluation.",
     )
 

@@ -1,4 +1,5 @@
 """Pydantic v2 schemas for validated code-animation timeline events."""
+
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt

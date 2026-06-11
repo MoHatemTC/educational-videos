@@ -6,7 +6,6 @@ console-friendly development logging and JSON-formatted production logging.
 """
 
 import json
-import logging
 import sys
 from contextvars import ContextVar
 from datetime import datetime
@@ -22,6 +21,7 @@ from typing import (
 import structlog
 from asgi_correlation_id import correlation_id
 
+import logging
 from app.core.config import (
     Environment,
     settings,

@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 
-from src.schemas import Timeline
-from src.validate_repair import TimelineValidationError, validate_or_repair, validate_or_repair_with_stats
+from app.core.schemas import Timeline
+from app.core.validate_repair import TimelineValidationError, validate_or_repair, validate_or_repair_with_stats
 
 
 class FakeLLMClient:
@@ -18,10 +18,10 @@ class FakeLLMClient:
         self.prompts: list[str] = []
 
     def generate_json(
-            self,
-            prompt: str,
-            schema: dict[str, Any] | None = None,
-            schema_name: str = "structured_output",
+        self,
+        prompt: str,
+        schema: dict[str, Any] | None = None,
+        schema_name: str = "structured_output",
     ) -> str:
         """Return the next fake response."""
         _ = schema

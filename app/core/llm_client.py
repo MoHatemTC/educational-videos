@@ -47,11 +47,11 @@ class LLMClient:
     """
 
     def __init__(
-            self,
-            model: str | None = None,
-            api_key: str | None = None,
-            base_url: str | None = None,
-            temperature: float = 0.0,
+        self,
+        model: str | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        temperature: float = 0.0,
     ) -> None:
         """Initialize the LiteLLM client.
 
@@ -81,10 +81,7 @@ class LLMClient:
             missing.append("LITELLM_BASE_URL")
 
         if missing:
-            raise LLMClientError(
-                "Missing required environment variable(s): "
-                + ", ".join(missing)
-            )
+            raise LLMClientError("Missing required environment variable(s): " + ", ".join(missing))
 
         self.client = OpenAI(
             api_key=self.api_key,
@@ -92,10 +89,10 @@ class LLMClient:
         )
 
     def generate_json(
-            self,
-            prompt: str,
-            schema: dict[str, Any] | None = None,
-            schema_name: str = "structured_output",
+        self,
+        prompt: str,
+        schema: dict[str, Any] | None = None,
+        schema_name: str = "structured_output",
     ) -> str:
         """Generate JSON text from the LLM.
 
@@ -133,9 +130,7 @@ class LLMClient:
             response = self.client.chat.completions.create(**request_kwargs)
         except Exception as first_error:
             if schema is None:
-                raise LLMClientError(
-                    f"LLM API call failed: {first_error}"
-                ) from first_error
+                raise LLMClientError(f"LLM API call failed: {first_error}") from first_error
 
             fallback_kwargs = self._build_request_kwargs(
                 prompt=full_prompt,
@@ -162,10 +157,10 @@ class LLMClient:
         return content.strip()
 
     def generate_json_dict(
-            self,
-            prompt: str,
-            schema: dict[str, Any] | None = None,
-            schema_name: str = "structured_output",
+        self,
+        prompt: str,
+        schema: dict[str, Any] | None = None,
+        schema_name: str = "structured_output",
     ) -> dict[str, Any]:
         """Generate JSON and parse it into a Python dictionary.
 
@@ -181,10 +176,7 @@ class LLMClient:
         try:
             parsed = json.loads(raw_output)
         except json.JSONDecodeError as error:
-            raise LLMClientError(
-                f"LLM output was not valid JSON: {error}\n\n"
-                f"Raw output:\n{raw_output}"
-            ) from error
+            raise LLMClientError(f"LLM output was not valid JSON: {error}\n\nRaw output:\n{raw_output}") from error
 
         if not isinstance(parsed, dict):
             raise LLMClientError("LLM output must be a JSON object.")
@@ -192,11 +184,11 @@ class LLMClient:
         return parsed
 
     def _build_request_kwargs(
-            self,
-            prompt: str,
-            schema: dict[str, Any] | None,
-            schema_name: str,
-            use_response_format: bool,
+        self,
+        prompt: str,
+        schema: dict[str, Any] | None,
+        schema_name: str,
+        use_response_format: bool,
     ) -> dict[str, Any]:
         """Build kwargs for the OpenAI-compatible chat completion request."""
         request_kwargs: dict[str, Any] = {

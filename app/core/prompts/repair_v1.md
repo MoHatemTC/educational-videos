@@ -1,5 +1,7 @@
 # Prompt: repair_v1
+
 # Version: v1
+
 # Purpose: Repair invalid timeline JSON while preserving the original script meaning.
 
 You are repairing invalid JSON for a code animation timeline.
@@ -22,6 +24,7 @@ Validation error:
 {error_message}
 
 Repair rules:
+
 - Fix only what is necessary to satisfy the schema.
 - Preserve the meaning of the original script context.
 - Do not invent unrelated code or actions.

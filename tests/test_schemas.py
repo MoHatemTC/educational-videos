@@ -5,7 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from src.schemas import Timeline
+from app.core.schemas import Timeline
 
 
 def test_valid_type_event_passes() -> None:

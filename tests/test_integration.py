@@ -4,15 +4,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from src.eval_harness import (
+from app.core.eval_harness import (
     evaluate_offline,
     format_report,
     load_json_file,
     validate_expected_timeline_item,
     write_report,
 )
-from src.prompt_chain import segment_script
-from src.schemas import Timeline
+from app.core.prompt_chain import segment_script
+from app.core.schemas import Timeline
 
 
 class FakeLLMClient:
@@ -40,7 +40,7 @@ class FakeLLMClient:
 
 def test_expected_timelines_fixture_is_valid() -> None:
     """All expected timeline fixtures should validate successfully."""
-    fixture_path = Path("fixtures/expected_timelines.json")
+    fixture_path = Path("tests/fixtures/expected_timelines.json")
     items = load_json_file(fixture_path)
 
     for item in items:
@@ -118,7 +118,7 @@ def test_segmentation_chain_returns_json_array() -> None:
 
 def test_offline_eval_writes_successful_report() -> None:
     """Offline evaluation should produce a readable report file."""
-    expected_path = Path("fixtures/expected_timelines.json")
+    expected_path = Path("tests/fixtures/expected_timelines.json")
     report_path = Path("results/test_eval_report.txt")
 
     try:

@@ -33,5 +33,5 @@ htmlcov/
 *.zip
 
 # Generated result files
-structured-outputs/results/*
-!structured-outputs/results/eval_report.txt
+results/*
+!results/eval_report.txt

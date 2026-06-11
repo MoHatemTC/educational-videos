@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from src.schemas import Timeline
+from app.core.schemas import Timeline
 
 
 class TimelineValidationError(Exception):
@@ -30,8 +30,7 @@ def validate_raw_timeline(raw_output: str) -> Timeline:
 
 def load_repair_prompt_template() -> str:
     """Load the versioned repair prompt template from disk."""
-    prompt_path = Path(__file__).resolve().parents[1] / "prompts" / "repair_v1.txt"
-
+    prompt_path = Path("app/core/prompts/repair_v1.md")
     if not prompt_path.exists():
         raise FileNotFoundError(f"Missing repair prompt file: {prompt_path}")
 

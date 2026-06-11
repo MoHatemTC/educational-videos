@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from src.llm_client import LLMClient, LLMClientError
-from src.prompt_chain import convert_script_to_timeline
+from app.core.llm_client import LLMClient, LLMClientError
+from app.core.prompt_chain import convert_script_to_timeline
 
 
 def load_json_file(path: Path) -> Any:
@@ -108,13 +108,11 @@ def batch_convert(
 
 def build_arg_parser() -> argparse.ArgumentParser:
     """Build the command-line interface."""
-    parser = argparse.ArgumentParser(
-        description="Batch convert narration scripts into validated timeline JSON."
-    )
+    parser = argparse.ArgumentParser(description="Batch convert narration scripts into validated timeline JSON.")
 
     parser.add_argument(
         "--input",
-        default="fixtures/sample_scripts.json",
+        default="tests/fixtures/sample_scripts.json",
         help="Input JSON file containing narration scripts.",
     )
 
