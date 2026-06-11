@@ -1,6 +1,7 @@
 """Base models and common imports for all models."""
 
 from datetime import datetime, UTC
+
 from sqlmodel import Field, SQLModel
 
 

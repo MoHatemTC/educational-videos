@@ -49,6 +49,7 @@ def build_llm() -> ChatOpenAI:
 
 
 async def main():
+    """Run the vision agent proof-of-concept."""
     if not USE_VISION:
         print("[info] USE_VISION=false — using DOM/accessibility mode.")
 

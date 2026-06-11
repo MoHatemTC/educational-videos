@@ -8,7 +8,10 @@ wheels/
 *.jsonl
 
 # Virtual environments
-.venv
+.venv/
+
+# IDE files
+.idea/
 
 # Environment variables
 .env
@@ -16,8 +19,19 @@ wheels/
 .env.staging
 .env.production
 
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
 # Misc
 *.ipynb
+*.zip
 
-# Reports
-evals/reports/
+# Generated result files
+results/*
+!results/eval_report.txt

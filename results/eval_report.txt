@@ -1,0 +1,23 @@
+Structured Outputs Evaluation Report
+============================================
+Mode: online
+Total items: 6
+Valid timelines: 6
+Failed timelines: 0
+Schema conformance rate: 100.00%
+Mean repair rounds: 0.00
+Sequence-level accuracy: 50.00%
+
+Event type coverage:
+- highlight: yes
+- run: yes
+- scroll: yes
+- type: yes
+
+Per-item results:
+- sample_001: valid (repair_rounds=0, sequence_correct=True)
+- sample_002: valid (repair_rounds=0, sequence_correct=False)
+- sample_003: valid (repair_rounds=0, sequence_correct=False)
+- sample_004: valid (repair_rounds=0, sequence_correct=True)
+- sample_005: valid (repair_rounds=0, sequence_correct=n/a)
+- sample_006: valid (repair_rounds=0, sequence_correct=n/a)

@@ -1,0 +1,33 @@
+# Prompt: repair_v1
+
+# Version: v1
+
+# Purpose: Repair invalid timeline JSON while preserving the original script meaning.
+
+You are repairing invalid JSON for a code animation timeline.
+
+Return JSON only.
+Do not include markdown.
+Do not include explanations.
+Do not include comments.
+
+The corrected JSON must match this schema:
+{schema_json}
+
+Original script segment or context:
+{source_context}
+
+Invalid output:
+{bad_output}
+
+Validation error:
+{error_message}
+
+Repair rules:
+
+- Fix only what is necessary to satisfy the schema.
+- Preserve the meaning of the original script context.
+- Do not invent unrelated code or actions.
+- Every event must include start_ms and end_ms.
+- Ensure end_ms is greater than start_ms.
+- Return the corrected JSON only.
