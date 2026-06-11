@@ -8,19 +8,24 @@
    G2-<branch_type>-<task_name>-<initials>
    ```
 
-   * `branch_type`:
+   `branch_type`:
 
-     * `FT` for features
-     * `FX` for fixes
-   * `task_name`: use kebab-case. Example: `prompt-engineering-layer`
-   * `initials`: first-name and last-name initials. Example: `DM`
+   * `FT` for features
+   * `FX` for fixes
+
+   `task_name`: use kebab-case. Example:
+
+   ```text
+   prompt-engineering-layer
+   ```
+
+   `initials`: first-name and last-name initials.
 
    Full examples:
 
    ```text
-   G2-FT-vector-database-DM
-   G2-FX-vector-size-AA
    G2-FT-prompt-engineering-layer-DM
+   G2-FX-vector-database-AA
    ```
 
 2. Do not push directly to `main`.
@@ -30,6 +35,8 @@
 4. Submit completed work through a Pull Request into `main`.
 
 5. Do not commit local secrets, virtual environments, generated caches, IDE files, or archive files.
+
+---
 
 ## ⚙️ Local setup with uv
 
@@ -80,11 +87,13 @@ uv.lock
 
 The `.venv/` folder is local only. Do not commit it and do not include it in submission archives.
 
+---
+
 ## 🔐 Environment variables
 
-For online LLM evaluation, create a local `.env` file from a copy of `.env.example`:
+Some features, especially LLM-related ones, require local environment variables.
 
-Then fill in the required values:
+Create a local `.env` file from `.env.example`, then fill in the required values:
 
 ```js
 LITELLM_BASE_URL=...
@@ -92,24 +101,26 @@ LITELLM_API_KEY=...
 DEFAULT_MODEL=...
 ```
 
-The `.env` file is local _secret_ configuration. **Never commit it or include it in submission archives.**
+The `.env` file is local secret configuration.
+
+**Never commit it or include it in submission archives!**  
+
+
+---
 
 ## ✅ Required checks before committing or pushing
 
-Run this one-liner from the repository root before every commit or push:
+Run this from the repository root before finalizing your commit or push:
 
 ```powershell
-uv run ruff format; uv run ruff check --fix; uv run pytest; uv run pyright;
+uv run ruff format; uv run ruff check --fix; uv run pytest; uv run pyright
 ```
 
-Example of healthy results:  
-![pic](../assets/uv-run-checks.png)
+Healthy results should look like:
 
-If you want Ruff to automatically fix safe lint issues, run this before the full check:
+![QA checks output](../assets/uv-run-checks.png)
 
-```powershell
-uv run ruff check . --fix
-```
+---
 
 ## 🧰 Common development commands
 
@@ -121,17 +132,13 @@ Format code:
 uv run ruff format .
 ```
 
-Check lint rules:
-
-```powershell
-uv run ruff check .
-```
-
 Check lint rules and auto-fix safe issues:
 
 ```powershell
 uv run ruff check . --fix
 ```
+
+---
 
 ### Run tests
 
@@ -149,11 +156,7 @@ uv run pytest tests/test_repair_loop.py
 uv run pytest tests/test_integration.py
 ```
 
-Run tests with extra detail:
-
-```powershell
-uv run pytest -v
-```
+---
 
 ### Run type checking
 
@@ -163,27 +166,15 @@ Run Pyright through uv:
 uv run pyright
 ```
 
-Trust this command over global `python -m pyright`, because the global Python environment may not have the project dependencies installed.
-
-### Run evaluation
-
-Run offline evaluation without using an API key:
+Prefer this over:
 
 ```powershell
-uv run python -m app.core.eval_harness --offline
+python -m pyright
 ```
 
-Run online evaluation using the `.env` configuration:
+The global Python environment may not have the project dependencies installed. This project should be checked through uv.
 
-```powershell
-uv run python -m app.core.eval_harness
-```
-
-Run repair-expected evaluation:
-
-```powershell
-uv run python -m app.core.eval_harness --repair-expected --expected tests/fixtures/expected_timelines_invalid.json
-```
+---
 
 ### Dependency management
 
@@ -202,7 +193,9 @@ uv sync
 
 Avoid broad dependency upgrades right before submission unless necessary.
 
-### Git checks
+---
+
+### Git commands
 
 Check changed files:
 
@@ -210,7 +203,7 @@ Check changed files:
 git status
 ```
 
-Review changes before staging:
+Review changes before staging (optional):
 
 ```powershell
 git diff
@@ -218,7 +211,11 @@ git diff
 
 Stage files:
 
-```powershell
+```py
+# stage a single file or folder
+git add <file-or-folder>
+
+# stage every changed file
 git add .
 ```
 
@@ -233,6 +230,8 @@ Push the current branch:
 ```powershell
 git push
 ```
+
+---
 
 ## 🛠️ Troubleshooting
 
@@ -260,56 +259,10 @@ Trust:
 uv run pyright
 ```
 
-The global Python environment may not have the repository dependencies installed. This project should be checked through uv.
+The global Python environment may not have the repository dependencies installed.
 
-### • `uv run eval_harness` says program not found
+### • Submission archives are too large
 
-`eval_harness` is a Python module, not a standalone executable.
+Do not include local-only files in archives, especially `.venv/`.
 
-Use:
-
-```powershell
-uv run python -m app.core.eval_harness --offline
-```
-
-or, for online evaluation:
-
-```powershell
-uv run python -m app.core.eval_harness
-```
-
-### • Online evaluation says environment variables are missing
-
-Make sure `.env` exists and contains:
-
-```env
-LITELLM_BASE_URL=...
-LITELLM_API_KEY=...
-DEFAULT_MODEL=...
-```
-
-Then run:
-
-```powershell
-uv run python -m app.core.eval_harness
-```
-
-### • Project folder is very large
-
-This is usually because `.venv/` exists. That is normal locally, but it should not be committed or submitted.
-
-Make sure these are ignored:
-
-```text
-.env
-.venv/
-venv/
-.git/
-.idea/
-.pytest_cache/
-.ruff_cache/
-__pycache__/
-*.pyc
-*.zip
-*.rar
-```
+Keep required report files if the task specifically asks for them.
