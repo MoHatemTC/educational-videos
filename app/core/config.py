@@ -10,14 +10,14 @@ from enum import Enum
 from pathlib import Path
 
 from dotenv import load_dotenv
+# ay 7aaaagaaaaa
 
 
 # Define environment types
 class Environment(str, Enum):
     """Application environment types.
 
-    Defines the possible environments the application can run in:
-    development, staging, production, and test.
+    Defineing, production, and test.
     """
 
     DEVELOPMENT = "development"
