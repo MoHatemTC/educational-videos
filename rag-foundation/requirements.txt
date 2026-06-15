@@ -1,0 +1,12 @@
+chromadb
+langchain
+langchain-core
+langchain-community
+langchain-chroma
+langchain-text-splitters
+langgraph
+sentence-transformers
+pydantic>=2
+python-dotenv
+pytest
+ruff

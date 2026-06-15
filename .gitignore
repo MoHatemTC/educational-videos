@@ -35,3 +35,22 @@ htmlcov/
 # Generated result files
 results/*
 !results/eval_report.txt
+
+# Personal roadmap
+/rag-foundation/RAG-ROADMAP.md
+
+# Sprint 2 RAG local artifacts
+rag-foundation/.chroma/
+rag-foundation/.chroma_test/
+rag-foundation/chroma/
+rag-foundation/chroma-data/
+rag-foundation/temp_docs/
+rag-foundation/external/
+rag-foundation/data/
+rag-foundation/models/
+rag-foundation/.cache/
+
+# Local vector DB files
+*.sqlite3
+*.sqlite
+*.db

@@ -1,119 +1,463 @@
-# FastAPI LangGraph Agent Template
+# Educational Videos AI Platform
 
-A production-ready template for building AI agent backends with FastAPI and LangGraph. Handles the hard parts — stateful conversations, long-term memory, tool calling, observability, rate limiting, auth — so you can focus on your agent logic.
+An AI-powered platform for generating technical educational videos from text prompts.
 
-**Built for AI engineers** who want a solid foundation, not a tutorial project.
+This repository is part of the **Sprints AI Engineering Virtual Internship**. The project focuses on building an autonomous educational video-generation system that can transform a simple learning prompt into a structured, validated, and renderable technical video workflow.
 
-## What's included
+---
 
-- **LangGraph** stateful agent with checkpointing, tool calling, and human-in-the-loop support
-- **Long-term memory** via mem0 + pgvector — semantic search per user, cache-backed
-- **LLM service** with circular model fallback, exponential backoff retries, and total timeout budget
-- **Langfuse** tracing on all LLM calls; Prometheus metrics + Grafana dashboards
-- **JWT auth** with session management; rate limiting via slowapi
-- **Alembic** migrations; optional Valkey/Redis cache layer
-- **Structured logging** with request/session/user context on every line
+## Overview
 
-## Quickstart
+Technical educational videos are expensive and time-consuming to produce manually. A single tutorial often requires scripting, coding, demo preparation, recording, editing, narration, visual synchronization, and repeated updates whenever tools, APIs, or libraries change.
 
-```bash
-git clone <repo-url> my-agent && cd my-agent
-cp .env.example .env.development   # fill in your keys
-make install
-make docker-up                     # starts API + PostgreSQL
+The goal of this project is to automate major parts of that workflow using AI agents, structured outputs, retrieval, code execution, text-to-speech, video synchronization, observability, and evaluation.
+
+At a high level, the platform aims to generate publish-ready technical educational videos from text prompts.
+
+Example prompt:
+
+```text
+Create a beginner-friendly tutorial explaining vector databases with a Python demo.
 ```
 
-Open [http://localhost:8000/docs](http://localhost:8000/docs) to see the interactive API.
+Expected output:
 
-> For local development without Docker see [docs/getting-started.md](docs/getting-started.md).
-
-## Documentation
-
-| Guide | What it covers |
-|---|---|
-| [Getting Started](docs/getting-started.md) | Prerequisites, local setup, first API call |
-| [Architecture](docs/architecture.md) | System design, request flow, component diagrams |
-| [Configuration](docs/configuration.md) | All environment variables with defaults |
-| [Authentication](docs/authentication.md) | JWT flow, sessions, endpoint reference |
-| [Database & Migrations](docs/database.md) | Schema, Alembic migrations, pgvector |
-| [LLM Service](docs/llm-service.md) | Models, retries, fallback, timeout budget |
-| [Memory](docs/memory.md) | mem0 long-term memory, cache layer |
-| [Observability](docs/observability.md) | Langfuse, structured logging, Prometheus, profiling |
-| [Evaluation](docs/evaluation.md) | Eval framework, custom metrics, reports |
-| [Docker](docs/docker.md) | Docker, Compose, full monitoring stack |
-
-## Project structure
-
+```text
+A scripted, validated, narrated, visually synchronized technical video with code/demo animations.
 ```
-app/
-  api/v1/          # Route handlers
-  core/
-    langgraph/     # Agent graph + tools
-    prompts/       # System prompt template
-    cache.py       # Valkey/Redis + in-memory fallback
-    config.py      # Settings
-    middleware.py  # Metrics, logging context, profiling
-    limiter.py     # Rate limiting
-  models/          # SQLModel ORM models
-  schemas/         # Pydantic request/response schemas
-  services/        # LLM, database, memory services
-alembic/           # Database migrations
-evals/             # LLM evaluation framework
+
+---
+
+## Project Vision
+
+The platform is designed to support scalable educational content creation.
+
+The long-term vision is an autonomous AI system that can:
+
+* Understand a learning request
+* Research and ground the topic
+* Generate an educational script
+* Produce code examples or UI demo steps
+* Convert narration into structured animation events
+* Validate generated outputs against strict schemas
+* Repair invalid AI outputs automatically
+* Generate multilingual narration
+* Synchronize audio with visual/code animations
+* Render a final educational video
+* Track quality, cost, and system behavior through observability tools
+
+---
+
+## Business Problem
+
+Traditional technical video production does not scale well.
+
+### Manual Production Bottlenecks
+
+Creating technical tutorials requires multiple manual steps: scripting, coding, recording, editing, reviewing, and publishing.
+
+### High Cost of Senior Talent
+
+Senior developers, instructors, and DevRel teams often spend valuable time preparing demos, recording walkthroughs, and editing content instead of focusing on core engineering or teaching priorities.
+
+### Difficult Localization
+
+Adapting content to new languages, accents, or markets usually requires re-recording narration and re-syncing visual content.
+
+### Fragile Content Maintenance
+
+Technical videos become outdated quickly when interfaces, libraries, APIs, or workflows change. Traditional automation scripts can also break when UI details change.
+
+---
+
+## Solution
+
+This project explores an AI-native pipeline for creating technical educational videos.
+
+Instead of treating video production as a fully manual process, the system breaks it into structured stages:
+
+```text
+User Prompt
+   ↓
+Research and Retrieval
+   ↓
+Lesson Script Generation
+   ↓
+Structured Timeline Planning
+   ↓
+Code or UI Demo Generation
+   ↓
+Execution and Validation
+   ↓
+Repair and Quality Checks
+   ↓
+TTS Narration
+   ↓
+Audio/Visual Synchronization
+   ↓
+Programmatic Video Rendering
+   ↓
+Final Educational Video
 ```
+
+The system is designed around structured, testable intermediate outputs so that AI-generated content can be validated, repaired, evaluated, and eventually rendered reliably.
+
+---
+
+## Target Demo
+
+The final demo target is a fully autonomous service that generates technical educational videos from text.
+
+The expected demo highlights include:
+
+### Autonomous AI Pipeline
+
+LangGraph-based agents research, script, and generate technical lesson content from a single user prompt.
+
+### Vision and UI Execution
+
+A vision-enabled agent navigates a simulated browser or interface, executes generated code or UI steps, and verifies the result.
+
+### Programmatic Video Synchronization
+
+The system synchronizes multilingual text-to-speech narration with rendered code typing, highlighting, scrolling, and execution animations.
+
+### Observability and Quality
+
+The backend exposes traces, fallbacks, cost tracking, hallucination checks, and quality reports to make the system debuggable and measurable.
+
+---
+
+## Core Capabilities
+
+Planned and developed capabilities include:
+
+* AI-assisted lesson planning
+* Agentic research and retrieval
+* Script generation
+* Structured output generation
+* Pydantic schema validation
+* Timeline event planning
+* Code-demo generation
+* Browser or UI execution agents
+* Sandboxed code correction
+* Text-to-speech generation
+* Audio and visual synchronization
+* Programmatic video rendering
+* Human-in-the-loop review
+* LLM fallback handling
+* Observability and tracing
+* Quality evaluation and reporting
+* Cost and accuracy tracking
+
+---
+
+## High-Level Architecture
+
+The platform is organized around several major layers.
+
+### 1. API Layer
+
+The API layer exposes backend endpoints for receiving generation requests, tracking jobs, and returning generated outputs.
+
+Expected responsibilities:
+
+* Accept user prompts
+* Start video-generation workflows
+* Track workflow status
+* Return generated artifacts
+* Expose health and monitoring endpoints
+
+---
+
+### 2. Agent Workflow Layer
+
+The agent workflow layer coordinates multistep AI tasks.
+
+Expected responsibilities:
+
+* Manage LangGraph workflows
+* Route work between specialized agents
+* Maintain workflow state
+* Handle retries and fallbacks
+* Coordinate research, scripting, coding, validation, and rendering stages
+
+---
+
+### 3. Retrieval and Knowledge Layer
+
+The retrieval layer grounds generated educational content in relevant source material.
+
+Expected responsibilities:
+
+* Store learning resources
+* Retrieve relevant context
+* Support agentic RAG
+* Improve factual grounding
+* Reduce hallucinations
+
+---
+
+### 4. Structured Output Layer
+
+The structured output layer converts free-form model responses into strict machine-readable formats.
+
+Expected responsibilities:
+
+* Define schemas for timeline events
+* Validate AI-generated JSON
+* Repair invalid outputs
+* Measure schema conformance
+* Provide reliable instructions for downstream rendering
+
+Example event types:
+
+```text
+type
+run
+highlight
+scroll
+```
+
+---
+
+### 5. Execution Layer
+
+The execution layer verifies generated code and UI behavior.
+
+Expected responsibilities:
+
+* Run generated code safely
+* Detect execution errors
+* Support self-correction
+* Validate demo steps
+* Connect to browser or vision-based execution agents
+
+---
+
+### 6. Media Generation Layer
+
+The media layer turns structured plans into final video assets.
+
+Expected responsibilities:
+
+* Generate narration
+* Map script segments to visual events
+* Render code animations
+* Sync audio with visuals
+* Compile final video output
+
+---
+
+### 7. Observability and Evaluation Layer
+
+The evaluation layer tracks system quality, reliability, and cost.
+
+Expected responsibilities:
+
+* Trace LLM calls
+* Track token usage
+* Track generation cost
+* Measure schema conformance
+* Measure sequence-level accuracy
+* Report repair attempts
+* Detect hallucinations
+* Support debugging and iteration
+
+---
+
+## Internship Milestones
+
+The project follows a structured 4-week engineering cycle.
+
+### Week 1 — Core Infrastructure
+
+Focus:
+
+* Base architecture
+* FastAPI endpoints
+* Vector database initialization
+* LangGraph state schemas
+* Baseline observability
+
+Goal:
+
+```text
+A working foundation for the AI video-generation backend.
+```
+
+---
+
+### Week 2 — End-to-End Pipeline
+
+Focus:
+
+* First complete workflow execution
+* Multi-agent routing
+* Agentic RAG integration
+* TTS audio generation
+* Visual execution planning
+
+Goal:
+
+```text
+A working end-to-end path from prompt to structured generation output.
+```
+
+---
+
+### Week 3 — Resilience and Human-in-the-Loop
+
+Focus:
+
+* LLM fallbacks
+* Sandboxed code self-correction
+* Streamlit review interface
+* Human-in-the-loop validation
+* More reliable repair and recovery behavior
+
+Goal:
+
+```text
+A more fault-tolerant system with review and correction mechanisms.
+```
+
+---
+
+### Week 4 — Scale and Polish
+
+Focus:
+
+* Asynchronous job processing
+* Celery/Redis queues
+* Concurrent request handling
+* Programmatic video compilation
+* Accuracy and cost dashboards
+* Final demo preparation
+
+Goal:
+
+```text
+A polished demo-ready system capable of generating technical educational videos.
+```
+
+---
+
+## Structured Outputs Module
+
+One important part of the platform is the structured-output pipeline.
+
+This module converts narration scripts into validated code-animation timelines. These timelines provide precise instructions for rendering educational videos.
+
+The structured-output workflow includes:
+
+* Script segmentation
+* Timeline synthesis
+* Pydantic v2 validation
+* Discriminated event unions
+* Temporal validation
+* Repair loops for invalid model output
+* Evaluation metrics
+* Schema and repair-loop tests
+
+This helps ensure that model outputs are not just readable, but also usable by downstream rendering systems.
+
+---
+
+## Evaluation Goals
+
+The project emphasizes measurable quality.
+
+Important evaluation dimensions include:
+
+* Schema conformance rate
+* Mean repair rounds
+* Sequence-level accuracy
+* Execution success rate
+* Hallucination detection
+* Token usage
+* Cost per generation
+* Final video readiness
+
+The system should not only generate content, but also provide evidence that the generated content is valid, accurate, and suitable for rendering.
+
+---
+
+## Expected Final Outcome
+
+The final system should demonstrate a pipeline capable of turning a text prompt into a technical educational video workflow.
+
+A successful demo should show:
+
+* A user submitting a technical lesson prompt
+* AI agents researching and planning the lesson
+* A generated script and code/demo plan
+* Validated structured timeline events
+* Code or UI execution
+* Narration generation
+* Audio and visual synchronization
+* Final video compilation
+* Observability traces and quality metrics
+
+---
+
+## Technology Areas
+
+The project may involve the following technologies and concepts:
+
+* Python
+* FastAPI
+* LangGraph
+* Pydantic v2
+* Vector databases
+* Agentic RAG
+* Text-to-speech
+* Vision-based agents
+* Browser automation
+* Sandboxed code execution
+* Streamlit
+* Langfuse
+* DeepEval
+* Celery
+* Redis
+* Docker
+* GitHub Actions
+* Programmatic video rendering
+
+---
+
+## Project Status
+
+This repository is under active development as part of the Sprints AI Engineering Virtual Internship.
+
+Current focus:
+
+```text
+Building the foundation for an autonomous AI-powered educational video-generation platform.
+```
+
+---
 
 ## Contributing
 
-PRs welcome. Please read [docs/getting-started.md](docs/getting-started.md) to get your environment set up, then follow the coding conventions in [AGENTS.md](AGENTS.md).
+For branch naming, Pull Request rules, and team workflow, see:
 
-Report security issues privately — see [SECURITY.md](SECURITY.md).
+```text
+.github/CONTRIBUTING.md
+```
 
-## License
+---
 
-See [LICENSE](LICENSE).
+## Contact
 
-## FAQ
+Sprints website:
 
-### General
+```text
+sprints.ai
+```
 
-**What is this template?**
-A production-ready foundation for AI agent backends built on FastAPI + LangGraph. It bundles the components you'd otherwise wire up by hand: stateful conversations, long-term memory, tool calling, observability, rate limiting, and JWT auth.
+Sprints email:
 
-**How does this differ from a basic LangGraph setup?**
-The base LangGraph quickstart stops at "agent runs locally". This template adds Alembic migrations, mem0 + pgvector long-term memory, Langfuse tracing, Prometheus + Grafana dashboards, JWT sessions, slowapi rate limiting, structured logging with per-request context, and a circular-fallback LLM service — production concerns you'd otherwise build separately.
-
-### Setup & Configuration
-
-**Do I need Docker?**
-Recommended but not required. `make docker-up` starts the API + PostgreSQL together. For local-only setup see [docs/getting-started.md](docs/getting-started.md).
-
-**Which LLM providers are supported?**
-Today: **OpenAI only** via the `LLMRegistry` in `app/services/llm/registry.py`. Multi-provider support (Anthropic, Google, OpenRouter) via LangChain's `init_chat_model` is planned — see [#51](https://github.com/wassim249/fastapi-langgraph-agent-production-ready-template/issues/51). Configure your model via `DEFAULT_LLM_MODEL` in `.env.development`.
-
-**How do I configure long-term memory?**
-Long-term memory is self-hosted: mem0 runs in-process and persists into your existing PostgreSQL via pgvector — there is no separate mem0 cloud account or API key. You only need a working `OPENAI_API_KEY` (used for fact extraction + embeddings) and the pgvector extension enabled. See [docs/memory.md](docs/memory.md) for details.
-
-### Development
-
-**How do I add a custom tool?**
-Drop a LangChain `@tool`-decorated function in `app/core/langgraph/tools/` and register it in the `tools` list exported from that package. The agent picks it up on next start; no graph changes needed.
-
-**How does the LLM service handle failures?**
-Two layers: (1) per-call exponential-backoff retry via `tenacity`, (2) **circular fallback** — if the active model exhausts its retries, the service rotates to the next model in `LLMRegistry` and continues. A total timeout budget caps the whole call so latency stays bounded. See [docs/llm-service.md](docs/llm-service.md).
-
-**Can I use this without Langfuse?**
-Yes. Set `LANGFUSE_TRACING_ENABLED=false` (or omit the Langfuse keys). The agent runs unchanged; structured logs still capture request/session/user context.
-
-### Troubleshooting
-
-**The API won't start**
-- Ensure PostgreSQL is running (`make docker-up` brings it up alongside the API)
-- Confirm `.env.development` exists — copy from `.env.example` and fill in required keys
-- Apply migrations: `make migrate`
-
-**Memory / semantic search returns nothing**
-- Verify the `pgvector` extension is enabled in your PostgreSQL instance
-- Confirm `OPENAI_API_KEY` is valid (mem0 calls OpenAI for fact extraction + embeddings)
-- Check `LONG_TERM_MEMORY_MODEL` and `LONG_TERM_MEMORY_EMBEDDER_MODEL` are set in `.env.development`
-
-**Rate limiting is too aggressive**
-Limits are defined in `app/core/limiter.py` (slowapi). Adjust per-route decorators or the default rate in that file. See [docs/configuration.md](docs/configuration.md) for the related env vars.
+```text
+info@sprints.ai
+```

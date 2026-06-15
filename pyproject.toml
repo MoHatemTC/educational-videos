@@ -15,7 +15,7 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "psycopg[binary]>=3.3.2",
     "psycopg2-binary>=2.9.10",
-    "pydantic[email]>=2.11.1",
+    "pydantic[email]>=2",
     "pydantic-settings>=2.8.1",
     "python-dotenv>=1.1.0",
     "python-jose[cryptography]>=3.4.0",
@@ -40,6 +40,12 @@ dependencies = [
     "uvloop>=0.22.1; platform_system != 'Windows'",
     "asgi-correlation-id>=4.3.4",
     "alembic>=1.18.4",
+    "chromadb>=1.5.9",
+    "langchain-chroma>=1.1.0",
+    "langchain-text-splitters>=1.0.0",
+    "sentence-transformers>=5.5.1",
+    "pytest>=8.3.5",
+    "ruff>=0.11.4",
 ]
 
 [project.optional-dependencies]
