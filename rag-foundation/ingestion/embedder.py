@@ -78,11 +78,7 @@ def get_embedding_function(
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> Embeddings:
     """Create the shared embedding function for ingestion and retrieval."""
-    resolved_model_name = (
-        model_name
-        or os.getenv("EMBEDDING_MODEL")
-        or DEFAULT_EMBEDDING_MODEL
-    )
+    resolved_model_name = model_name or os.getenv("EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODEL
 
     return SentenceTransformerEmbeddingFunction(
         model_name=resolved_model_name,

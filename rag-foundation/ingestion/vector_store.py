@@ -42,9 +42,7 @@ def resolve_persist_dir(persist_dir: str | Path | None = None) -> Path:
         Absolute path to the persistence directory.
     """
     raw_persist_dir = (
-        str(persist_dir)
-        if persist_dir is not None
-        else os.getenv("CHROMA_PERSIST_DIR", DEFAULT_CHROMA_PERSIST_DIR)
+        str(persist_dir) if persist_dir is not None else os.getenv("CHROMA_PERSIST_DIR", DEFAULT_CHROMA_PERSIST_DIR)
     )
 
     return Path(raw_persist_dir).expanduser().resolve()
@@ -62,11 +60,7 @@ def resolve_collection_name(collection_name: str | None = None) -> str:
     Raises:
         ValueError: If the resolved collection name is empty.
     """
-    resolved_name = (
-        collection_name
-        or os.getenv("CHROMA_COLLECTION")
-        or DEFAULT_COLLECTION_NAME
-    )
+    resolved_name = collection_name or os.getenv("CHROMA_COLLECTION") or DEFAULT_COLLECTION_NAME
 
     if not resolved_name.strip():
         msg = "Chroma collection name must be non-empty."

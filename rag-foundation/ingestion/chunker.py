@@ -182,11 +182,7 @@ def chunk_documents(
     chunks: list[Document] = []
 
     for document in documents:
-        split_texts = [
-            text.strip()
-            for text in splitter.split_text(document.page_content)
-            if text.strip()
-        ]
+        split_texts = [text.strip() for text in splitter.split_text(document.page_content) if text.strip()]
 
         for chunk_index, chunk_content in enumerate(split_texts):
             chunks.append(

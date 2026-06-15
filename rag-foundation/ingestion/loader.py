@@ -48,10 +48,7 @@ def normalize_suffixes(suffixes: Iterable[str] | None = None) -> frozenset[str]:
     if suffixes is None:
         return SUPPORTED_SUFFIXES
 
-    return frozenset(
-        suffix.lower() if suffix.startswith(".") else f".{suffix.lower()}"
-        for suffix in suffixes
-    )
+    return frozenset(suffix.lower() if suffix.startswith(".") else f".{suffix.lower()}" for suffix in suffixes)
 
 
 def is_ignored_path(path: Path, root: Path) -> bool:
@@ -99,9 +96,7 @@ def iter_document_paths(
     return sorted(
         path
         for path in root.rglob("*")
-        if path.is_file()
-        and path.suffix.lower() in supported_suffixes
-        and not is_ignored_path(path, root)
+        if path.is_file() and path.suffix.lower() in supported_suffixes and not is_ignored_path(path, root)
     )
 
 
