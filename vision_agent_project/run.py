@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-run.py — CLI entry point for the Vision-Based UI Agent (Gemini backend).
+"""run.py — CLI entry point for the Vision-Based UI Agent (Gemini backend).
 
 Usage
 -----
@@ -64,12 +63,14 @@ DEFAULT_TASK = (
 
 
 def get_task() -> str:
+    """Return the task from command-line arguments."""
     if len(sys.argv) > 1:
         return " ".join(sys.argv[1:]).strip()
     return os.getenv("TASK_PROMPT", DEFAULT_TASK).strip()
 
 
 def get_window_size() -> tuple[int, int]:
+    """Return browser viewport size from WINDOW_SIZE."""
     raw = os.getenv("WINDOW_SIZE", "1280x900").lower()
     if "x" in raw:
         parts = raw.split("x", 1)
@@ -81,6 +82,7 @@ def get_window_size() -> tuple[int, int]:
 
 
 async def main() -> int:
+    """Run the vision agent application."""
     _setup_logging(os.getenv("LOG_LEVEL", "INFO"))
     log = logging.getLogger("run")
 

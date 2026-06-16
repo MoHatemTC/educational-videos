@@ -1,6 +1,5 @@
-"""
-vision_agent.actions
-====================
+"""vision_agent.actions.
+
 Typed data-classes for every browser action the VLM can produce.
 
 Supported actions
@@ -31,12 +30,20 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import (
+    dataclass,
+    field,
+)
 from enum import Enum
-from typing import Any, Optional
+from typing import (
+    Any,
+    Optional,
+)
 
 
 class ActionType(str, Enum):
+    """Supported browser actions."""
+
     CLICK = "click"
     TYPE = "type"
     SCROLL = "scroll"
@@ -99,13 +106,12 @@ class Action:
 
     @classmethod
     def from_vlm_text(cls, text: str) -> "Action":
-        """
-        Extract the first JSON object from free-form VLM output and parse it.
+        """Extract the first JSON object from free-form VLM output and parse it.
 
         The model may wrap the JSON in markdown code fences or precede it with
         reasoning prose – this method handles both cases.
 
-        Raises
+        Raises:
         ------
         ValueError
             If no parseable JSON action block is found.
@@ -130,9 +136,7 @@ class Action:
             except json.JSONDecodeError:
                 continue
 
-        raise ValueError(
-            f"No valid action JSON found in VLM output.\n--- Raw output ---\n{text}"
-        )
+        raise ValueError(f"No valid action JSON found in VLM output.\n--- Raw output ---\n{text}")
 
     # ------------------------------------------------------------------ #
     # Helpers
@@ -143,6 +147,7 @@ class Action:
         return self.action_type == ActionType.DONE
 
     def __repr__(self) -> str:
+        """Return a debug representation of the action."""
         parts = [f"Action(type={self.action_type.value!r}"]
         if self.x is not None:
             parts.append(f"x={self.x}, y={self.y}")

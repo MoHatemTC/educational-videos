@@ -1,6 +1,5 @@
-"""
-vision_agent.agent
-==================
+r"""vision_agent.agent.
+
 Core Observe → Reason → Plan → Act loop.
 
 Architecture
@@ -42,8 +41,10 @@ from typing import Optional
 
 import httpx
 from dotenv import load_dotenv
-
-from vision_agent.actions import Action, ActionType
+from vision_agent.actions import (
+    Action,
+    ActionType,
+)
 from vision_agent.browser import BrowserController
 from vision_agent.recorder import Recorder
 
@@ -52,10 +53,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Gemini REST endpoint — model and key are substituted at call time
-GEMINI_API_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models"
-    "/{model}:generateContent?key={api_key}"
-)
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
 
 # ------------------------------------------------------------------ #
 # VLM system prompt
@@ -84,8 +82,8 @@ Rules:
 
 
 class VisionAgent:
-    """
-    Vision-based UI agent that drives a browser without CSS selectors or XPath.
+    """Vision-based UI agent that drives a browser without CSS selectors or XPath.
+
     Uses the Google Gemini Vision API directly.
 
     Parameters
@@ -127,6 +125,7 @@ class VisionAgent:
         record_video: bool = True,
         gif_fps: float = 1.0,
     ) -> None:
+        """Initialize the browser controller."""
         self.task = task
 
         # Gemini config — env vars are the fallback
@@ -134,10 +133,7 @@ class VisionAgent:
         self.model = model or os.getenv("DEFAULT_MODEL", "gemini-2.5-flash")
 
         if not self.google_api_key:
-            raise ValueError(
-                "GOOGLE_API_KEY must be set "
-                "(either as a constructor argument or environment variable)."
-            )
+            raise ValueError("GOOGLE_API_KEY must be set (either as a constructor argument or environment variable).")
 
         self.max_steps = max_steps
         self.output_dir = Path(output_dir)
@@ -164,10 +160,9 @@ class VisionAgent:
     # ------------------------------------------------------------------ #
 
     async def run(self) -> str:
-        """
-        Open the browser and run the Observe → Reason → Plan → Act loop.
+        """Open the browser and run the Observe → Reason → Plan → Act loop.
 
-        Returns
+        Returns:
         -------
         str
             The agent's final result string (from a ``done`` action) or a
@@ -231,15 +226,14 @@ class VisionAgent:
         return png_bytes
 
     async def _reason(self, png_bytes: bytes) -> str:
-        """
-        Stage 2 – Send the screenshot + task to the Gemini Vision API.
+        """Stage 2 – Send the screenshot + task to the Gemini Vision API.
+
         Returns the raw text response from the model.
         """
         b64 = base64.b64encode(png_bytes).decode("ascii")
 
-        history_summary = (
-            f"Steps completed so far: {len(self._history)}\n"
-            + ("\n".join(f"  - {h}" for h in self._history[-5:]) if self._history else "  (none)")
+        history_summary = f"Steps completed so far: {len(self._history)}\n" + (
+            "\n".join(f"  - {h}" for h in self._history[-5:]) if self._history else "  (none)"
         )
 
         user_text = (
@@ -251,9 +245,7 @@ class VisionAgent:
 
         # Gemini multimodal request body
         payload = {
-            "system_instruction": {
-                "parts": [{"text": SYSTEM_PROMPT}]
-            },
+            "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
             "contents": [
                 {
                     "role": "user",
@@ -301,8 +293,7 @@ class VisionAgent:
     # ------------------------------------------------------------------ #
 
     async def _call_gemini(self, payload: dict) -> str:
-        """
-        POST to the Gemini generateContent REST endpoint.
+        """POST to the Gemini generateContent REST endpoint.
 
         Uses httpx.AsyncClient so the entire agent stays fully async.
         Raises RuntimeError on non-200 responses.
@@ -317,15 +308,10 @@ class VisionAgent:
             )
 
         if response.status_code != 200:
-            raise RuntimeError(
-                f"Gemini API request failed: HTTP {response.status_code}\n"
-                f"{response.text[:500]}"
-            )
+            raise RuntimeError(f"Gemini API request failed: HTTP {response.status_code}\n{response.text[:500]}")
 
         data = response.json()
         try:
             return data["candidates"][0]["content"]["parts"][0]["text"]
         except (KeyError, IndexError) as exc:
-            raise RuntimeError(
-                f"Unexpected Gemini response shape: {json.dumps(data)[:400]}"
-            ) from exc
+            raise RuntimeError(f"Unexpected Gemini response shape: {json.dumps(data)[:400]}") from exc

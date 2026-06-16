@@ -1,6 +1,5 @@
-"""
-vision_agent.recorder
-=====================
+"""vision_agent.recorder.
+
 Output-persistence layer for the vision agent.
 
 Responsibilities
@@ -24,16 +23,17 @@ Usage
 from __future__ import annotations
 
 import logging
-import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import (
+    List,
+    Optional,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class Recorder:
-    """
-    Collects PNG frames and converts them to an animated GIF.
+    """Collects PNG frames and converts them to an animated GIF.
 
     Parameters
     ----------
@@ -49,6 +49,7 @@ class Recorder:
         output_dir: Path = Path("output"),
         gif_path: Optional[Path] = None,
     ) -> None:
+        """Initialize the browser controller."""
         self.output_dir = Path(output_dir)
         self.screenshots_dir = self.output_dir / "screenshots"
         self.video_dir = self.output_dir / "video"
@@ -66,8 +67,7 @@ class Recorder:
     # ------------------------------------------------------------------ #
 
     def save_screenshot(self, step: int, png_bytes: bytes) -> Path:
-        """
-        Write a PNG frame to disk and register it for GIF compilation.
+        """Write a PNG frame to disk and register it for GIF compilation.
 
         Parameters
         ----------
@@ -76,7 +76,7 @@ class Recorder:
         png_bytes:
             Raw PNG bytes from the browser.
 
-        Returns
+        Returns:
         -------
         Path
             Absolute path to the saved file.
@@ -92,8 +92,7 @@ class Recorder:
     # ------------------------------------------------------------------ #
 
     def save_gif(self, fps: float = 1.0, max_size: tuple[int, int] = (1280, 900)) -> Optional[Path]:
-        """
-        Compile collected screenshots into an animated GIF using Pillow.
+        """Compile collected screenshots into an animated GIF using Pillow.
 
         The frames are resized (aspect-ratio-preserving) to ``max_size`` to
         keep the output file manageable.
@@ -105,7 +104,7 @@ class Recorder:
         max_size:
             Maximum (width, height) for each frame.
 
-        Returns
+        Returns:
         -------
         Path | None
             Path to the created GIF, or None if fewer than 2 frames are available.
@@ -117,10 +116,7 @@ class Recorder:
         try:
             from PIL import Image  # type: ignore
         except ImportError:
-            logger.warning(
-                "Pillow not installed – skipping GIF generation. "
-                "Install with: pip install Pillow"
-            )
+            logger.warning("Pillow not installed – skipping GIF generation. Install with: pip install Pillow")
             return None
 
         duration_ms = int(1000 / fps)
@@ -148,9 +144,7 @@ class Recorder:
             duration=duration_ms,
             optimize=False,
         )
-        logger.info(
-            "GIF saved → %s  (%d frames @ %.1f fps)", self.gif_path, len(pil_frames), fps
-        )
+        logger.info("GIF saved → %s  (%d frames @ %.1f fps)", self.gif_path, len(pil_frames), fps)
         return self.gif_path
 
     # ------------------------------------------------------------------ #
@@ -170,6 +164,7 @@ class Recorder:
 
     @property
     def frame_count(self) -> int:
+        """Return the number of recorded frames."""
         return len(self._frames)
 
     def clear_frames(self) -> None:

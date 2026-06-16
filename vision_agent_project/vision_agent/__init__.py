@@ -1,5 +1,4 @@
-"""
-vision_agent — Vision-Based UI Agent for DOM-Independent Browser Navigation.
+"""vision_agent — Vision-Based UI Agent for DOM-Independent Browser Navigation.
 
 Implements the Observe → Reason → Plan → Act loop:
   1. Observe  : capture a full-page screenshot via Playwright / browser-use CDP backend

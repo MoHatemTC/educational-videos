@@ -1,6 +1,5 @@
-"""
-vision_agent.browser
-====================
+"""vision_agent.browser.
+
 Low-level Playwright / browser-use CDP wrapper.
 
 Responsibilities
@@ -27,18 +26,19 @@ from __future__ import annotations
 import asyncio
 import base64
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 
-from vision_agent.actions import Action, ActionType
+from vision_agent.actions import (
+    Action,
+    ActionType,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class BrowserController:
-    """
-    Async context-manager that owns a single Playwright Page.
+    """Async context-manager that owns a single Playwright Page.
 
     Parameters
     ----------
@@ -66,6 +66,7 @@ class BrowserController:
         video_dir: Optional[Path] = None,
         slow_mo_ms: int = 0,
     ) -> None:
+        """Initialize the browser controller."""
         self.headless = headless
         self.chrome_path = chrome_path
         self.window_width = window_width
@@ -84,10 +85,12 @@ class BrowserController:
     # ------------------------------------------------------------------ #
 
     async def __aenter__(self) -> "BrowserController":
+        """Enter the async context manager."""
         await self._launch()
         return self
 
     async def __aexit__(self, *_exc) -> None:
+        """Exit the async context manager."""
         await self.close()
 
     async def _launch(self) -> None:
@@ -155,10 +158,6 @@ class BrowserController:
             self._playwright = None
         logger.info("Browser closed.")
 
-    # ------------------------------------------------------------------ #
-    # Screenshot (Observe)
-    # ------------------------------------------------------------------ #
-
     async def screenshot_bytes(self) -> bytes:
         """Return a full-page PNG screenshot as raw bytes."""
         self._require_page()
@@ -181,10 +180,9 @@ class BrowserController:
     # ------------------------------------------------------------------ #
 
     async def execute(self, action: Action) -> None:
-        """
-        Dispatch a typed Action to the appropriate Playwright call.
+        """Dispatch a typed Action to the appropriate Playwright call.
 
-        Raises
+        Raises:
         ------
         ValueError
             For ActionType.DONE – the caller (agent loop) should handle that.
@@ -213,9 +211,7 @@ class BrowserController:
             logger.debug("Waited %.1fs", action.seconds)
 
         elif atype == ActionType.DONE:
-            raise ValueError(
-                "ActionType.DONE must be handled by the agent loop, not executed."
-            )
+            raise ValueError("ActionType.DONE must be handled by the agent loop, not executed.")
 
         else:
             raise ValueError(f"Unrecognised ActionType: {atype!r}")
