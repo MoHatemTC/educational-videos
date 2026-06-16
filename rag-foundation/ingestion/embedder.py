@@ -3,12 +3,16 @@
 import os
 from typing import Final
 
+from dotenv import load_dotenv
 from langchain_core.embeddings import Embeddings
 from sentence_transformers import SentenceTransformer
 from typing_extensions import override
 
 DEFAULT_EMBEDDING_MODEL: Final[str] = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_BATCH_SIZE: Final[int] = 32
+
+load_dotenv()
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 
 class SentenceTransformerEmbeddingFunction(Embeddings):
@@ -20,7 +24,16 @@ class SentenceTransformerEmbeddingFunction(Embeddings):
         batch_size: int = DEFAULT_BATCH_SIZE,
         normalize_embeddings: bool = True,
     ) -> None:
-        """Initialize the embedding function."""
+        """Initialize the embedding function.
+
+        Args:
+            model_name: Sentence-transformers model name.
+            batch_size: Number of texts to embed per batch.
+            normalize_embeddings: Whether to L2-normalize embeddings.
+
+        Raises:
+            ValueError: If model name or batch size is invalid.
+        """
         if not model_name:
             msg = "model_name must be a non-empty string."
             raise ValueError(msg)
@@ -36,18 +49,32 @@ class SentenceTransformerEmbeddingFunction(Embeddings):
 
     @property
     def model(self) -> SentenceTransformer:
-        """Load and return the sentence-transformers model lazily."""
+        """Load and return the sentence-transformers model lazily.
+
+        Returns:
+            Loaded sentence-transformers model.
+        """
         model = self._model
 
         if model is None:
-            model = SentenceTransformer(self.model_name)
+            model = SentenceTransformer(
+                self.model_name,
+                token=os.getenv("HF_TOKEN") or None,
+            )
             self._model = model
 
         return model
 
     @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """Embed a list of document texts."""
+        """Embed a list of document texts.
+
+        Args:
+            texts: Text chunks to embed.
+
+        Returns:
+            List of embedding vectors.
+        """
         if not texts:
             return []
 
@@ -65,7 +92,17 @@ class SentenceTransformerEmbeddingFunction(Embeddings):
 
     @override
     def embed_query(self, text: str) -> list[float]:
-        """Embed a single query string."""
+        """Embed a single query string.
+
+        Args:
+            text: Query text.
+
+        Returns:
+            Query embedding vector.
+
+        Raises:
+            ValueError: If query text is empty.
+        """
         if not text.strip():
             msg = "Query text must be non-empty."
             raise ValueError(msg)
@@ -77,7 +114,15 @@ def get_embedding_function(
     model_name: str | None = None,
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> Embeddings:
-    """Create the shared embedding function for ingestion and retrieval."""
+    """Create the shared embedding function for ingestion and retrieval.
+
+    Args:
+        model_name: Optional embedding model name.
+        batch_size: Number of texts to embed per batch.
+
+    Returns:
+        LangChain-compatible embedding function.
+    """
     resolved_model_name = model_name or os.getenv("EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODEL
 
     return SentenceTransformerEmbeddingFunction(

@@ -1,32 +1,55 @@
-Sprint 2 RAG Foundation - Retrieval Validation Report
-========================================================
+Sprint 2 RAG Foundation - Validation Report
+================================================
+
+Status:
+Validated locally
+
+Python:
+3.13.14
+
+Validated phases:
+- Phase 1: Skeleton and shared metadata contract
+- Phase 2: Documentation loader
+- Phase 3: Chunker
+- Phase 4: Embedder
+- Phase 5: Chroma vector store
+- Phase 6: Ingestion CLI and retrieval sanity check
+- Phase 7: RAG tool schemas
+- Phase 8: Metadata-aware retriever
+- Phase 9: Citation formatter
+- Phase 10: LangChain StructuredTool
+- Phase 11: Retrieval CLI
+- Phase 12: Research agent integration
+- Phase 13: Infrastructure and environment files
+- Phase 14: Pytest coverage
+
+Validated behavior:
+- Loader reads supported documentation files.
+- Loader skips unsupported files.
+- Chunker preserves source, version, and doc_type metadata.
+- Chunker adds chunk_index, chunk_id, and content_hash.
+- Embedder returns 384-dimensional vectors.
+- Vector store persists chunks in ChromaDB.
+- Re-ingestion is idempotent.
+- Retrieval supports source/version/doc_type filters.
+- Retrieval supports top_k.
+- Retrieval supports similarity threshold.
+- Returned chunks include citations.
+- StructuredTool can be imported and called.
+- Research agent returns grounded cited context.
+- Pytest passes with local pytest base temp directory.
+
+Retrieval sanity check:
 Query: vector search
-Source filter: qdrant
-Version filter: master
-Doc type filter: md
+Filters: source=qdrant, version=master, doc_type=md
 Top K: 3
 Results returned: 3
-Metadata contract checked: source, version, doc_type
 
-Result 1
-ID: 568b027117516e88befb6b5e54e3213d2cf2cc05b2679f68e767b83b7a667dab
-Distance: 0.5078336000442505
-Citation: [qdrant/master/md] test.md#chunk-4
-Metadata: {'doc_type': 'md', 'version': 'master', 'chunk_index': 4, 'path': 'test.md', 'content_hash': '214d73e7089134e14afdba3a00cd81e2448909dbc3c80cead263277c4fd9f831', 'chunk_id': '568b027117516e88befb6b5e54e3213d2cf2cc05b2679f68e767b83b7a667dab', 'source': 'qdrant'}
-Preview: and vector search.
+Example citation:
+[qdrant/master/md] test.md#chunk-4
 
-Result 2
-ID: 5de98e54610367a811ebafaf6ad043bfdd3b66a063fe53897436370ace2082ce
-Distance: 0.7837483286857605
-Citation: [qdrant/master/md] test.md#chunk-0
-Metadata: {'version': 'master', 'content_hash': '64d92fc5af3f881605828097b22f201167092e787544b0870ddab8f3ec1b750b', 'chunk_id': '5de98e54610367a811ebafaf6ad043bfdd3b66a063fe53897436370ace2082ce', 'path': 'test.md', 'source': 'qdrant', 'chunk_index': 0, 'doc_type': 'md'}
-Preview: ﻿# Vector Search
-
-Qdrant is a vector database for semantic search.
-
-Result 3
-ID: 63109361f7f1a31ade1c1ff5cd375c6c4506b88f1b17a294f9d2e3450238c958
-Distance: 1.5670442581176758
-Citation: [qdrant/master/md] test.md#chunk-3
-Metadata: {'version': 'master', 'content_hash': 'beede714ca114f0768cb691762aff9b1f410e6949bc7dc6131a1ca7891872b67', 'source': 'qdrant', 'chunk_id': '63109361f7f1a31ade1c1ff5cd375c6c4506b88f1b17a294f9d2e3450238c958', 'doc_type': 'md', 'chunk_index': 3, 'path': 'test.md'}
-Preview: Qdrant documentation explains collections, points, payloads, indexes, and
+Known notes:
+- Docker Desktop was not required for local embedded Chroma validation.
+- infra/docker-compose.yml is included as the required Docker deliverable.
+- Hugging Face token is loaded from local .env and must not be committed.
+- .env.example contains only placeholder values.

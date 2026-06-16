@@ -54,3 +54,6 @@ rag-foundation/.cache/
 *.sqlite3
 *.sqlite
 *.db
+
+# Local pytest temp files
+rag-foundation/.pytest_tmp/

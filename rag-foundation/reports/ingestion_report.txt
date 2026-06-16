@@ -1,19 +1,55 @@
 Sprint 2 RAG Foundation - Ingestion Report
 ================================================
-Corpus path: temp_docs
-Source: qdrant
-Version: master
-Vector database: ChromaDB
-Collection name: phase_6_test
-Persist directory: .chroma_test
-Embedding model: sentence-transformers/all-MiniLM-L6-v2
-Chunk size: 80
-Chunk overlap: 10
-Documents loaded: 1
-Chunks created: 5
-Vectors submitted: 5
-Vector count before: 5
-Vector count after: 5
-Net new vectors: 0
-Duplicate vectors prevented: 5
-Metadata contract: source, version, doc_type
+
+Status: Validated with local smoke corpus
+
+Corpus path:
+temp_docs
+
+Source:
+qdrant
+
+Version:
+master
+
+Vector database:
+ChromaDB
+
+Collection name:
+phase_6_test
+
+Persist directory:
+.chroma_test
+
+Embedding model:
+sentence-transformers/all-MiniLM-L6-v2
+
+Chunk size:
+80
+
+Chunk overlap:
+10
+
+Documents loaded:
+1
+
+Chunks created:
+5
+
+First ingestion:
+- Vector count before: 0
+- Vector count after: 5
+- Net new vectors: 5
+- Duplicate vectors prevented: 0
+
+Second ingestion:
+- Vector count before: 5
+- Vector count after: 5
+- Net new vectors: 0
+- Duplicate vectors prevented: 5
+
+Metadata contract:
+source, version, doc_type
+
+Result:
+Idempotent ingestion is confirmed. Re-running ingestion does not duplicate vectors.
