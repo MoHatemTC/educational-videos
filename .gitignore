@@ -57,3 +57,5 @@ rag-foundation/.cache/
 
 # Local pytest temp files
 rag-foundation/.pytest_tmp/
+# Local pytest temp files
+rag-foundation/.pytest_tmp/
