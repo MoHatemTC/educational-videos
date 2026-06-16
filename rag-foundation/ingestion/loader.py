@@ -32,6 +32,7 @@ IGNORED_DIRS = frozenset(
         "dist",
         "build",
         ".chroma",
+        "redoc",
     }
 )
 

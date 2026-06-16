@@ -1,55 +1,38 @@
-Sprint 2 RAG Foundation - Validation Report
-================================================
-
-Status:
-Validated locally
-
-Python:
-3.13.14
-
-Validated phases:
-- Phase 1: Skeleton and shared metadata contract
-- Phase 2: Documentation loader
-- Phase 3: Chunker
-- Phase 4: Embedder
-- Phase 5: Chroma vector store
-- Phase 6: Ingestion CLI and retrieval sanity check
-- Phase 7: RAG tool schemas
-- Phase 8: Metadata-aware retriever
-- Phase 9: Citation formatter
-- Phase 10: LangChain StructuredTool
-- Phase 11: Retrieval CLI
-- Phase 12: Research agent integration
-- Phase 13: Infrastructure and environment files
-- Phase 14: Pytest coverage
-
-Validated behavior:
-- Loader reads supported documentation files.
-- Loader skips unsupported files.
-- Chunker preserves source, version, and doc_type metadata.
-- Chunker adds chunk_index, chunk_id, and content_hash.
-- Embedder returns 384-dimensional vectors.
-- Vector store persists chunks in ChromaDB.
-- Re-ingestion is idempotent.
-- Retrieval supports source/version/doc_type filters.
-- Retrieval supports top_k.
-- Retrieval supports similarity threshold.
-- Returned chunks include citations.
-- StructuredTool can be imported and called.
-- Research agent returns grounded cited context.
-- Pytest passes with local pytest base temp directory.
-
-Retrieval sanity check:
-Query: vector search
-Filters: source=qdrant, version=master, doc_type=md
+Sprint 2 RAG Foundation - Retrieval Validation Report
+========================================================
+Query: Qdrant development build
+Source filter: qdrant
+Version filter: master
+Doc type filter: md
 Top K: 3
 Results returned: 3
+Metadata contract checked: source, version, doc_type
 
-Example citation:
-[qdrant/master/md] test.md#chunk-4
+Result 1
+ID: afcc81759de73a18ae800f977f35acdb456adc6dec391d0350c742f2fa734d7d
+Distance: 0.3958946168422699
+Citation: [qdrant/master/md] DEVELOPMENT.md#chunk-0
+Metadata: {'version': 'master', 'doc_type': 'md', 'path': 'DEVELOPMENT.md', 'chunk_index': 0, 'source': 'qdrant', 'content_hash': 'c414269f85e9cbb800e0dfa56ce3eaa71723433f1043236ada63d0dac0eb5081', 'chunk_id': 'afcc81759de73a18ae800f977f35acdb456adc6dec391d0350c742f2fa734d7d'}
+Preview: # Developer's guide to Qdrant
 
-Known notes:
-- Docker Desktop was not required for local embedded Chroma validation.
-- infra/docker-compose.yml is included as the required Docker deliverable.
-- Hugging Face token is loaded from local .env and must not be committed.
-- .env.example contains only placeholder values.
+Result 2
+ID: 45c5bab3a1a403fbc6b463515ce5bc0b6eabd21f2fc95a4241558770cfba5d8c
+Distance: 0.4563373327255249
+Citation: [qdrant/master/md] DEVELOPMENT.md#chunk-1
+Metadata: {'content_hash': '6360cc01bc842654dcf4151543f974c66c3e4f9f3a35479c9f70a98fac6ae7e5', 'chunk_id': '45c5bab3a1a403fbc6b463515ce5bc0b6eabd21f2fc95a4241558770cfba5d8c', 'path': 'DEVELOPMENT.md', 'version': 'master', 'chunk_index': 1, 'doc_type': 'md', 'source': 'qdrant'}
+Preview: ## Build Qdrant
+
+Result 3
+ID: e976cfa6670b75b9a2705bc990764822e2f654f99346324a98322266a3d3580c
+Distance: 0.6216763854026794
+Citation: [qdrant/master/md] roadmap/roadmap-2023.md#chunk-0
+Metadata: {'source': 'qdrant', 'chunk_id': 'e976cfa6670b75b9a2705bc990764822e2f654f99346324a98322266a3d3580c', 'chunk_index': 0, 'content_hash': '4399232653d68f76e0921efd0171268fbf15666275320c08f8a193336191fb41', 'path': 'roadmap/roadmap-2023.md', 'version': 'master', 'doc_type': 'md'}
+Preview: # Qdrant 2023 Roadmap
+
+Hi!
+This document is our plan for Qdrant development in 2023.
+Previous year roadmap is available here:
+
+* [Roadmap 2022](roadmap-2022.md)
+
+Goals of the release:
