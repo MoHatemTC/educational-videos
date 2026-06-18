@@ -1,5 +1,12 @@
 """Tests for the Sprint 2 RAG foundation retrieval stack."""
 
+from rag_tool.tool_definition import retrieve_technical_docs
+from agent.research_agent import (
+    build_research_graph,
+    call_retrieval_tool_node,
+    prepare_context_node,
+    prepare_tool_input_node,
+)
 from pathlib import Path
 from uuid import uuid4
 
@@ -250,3 +257,61 @@ def test_retriever_returns_cited_filtered_chunks(
     assert output.result_count == 1
     assert output.results[0].citation.startswith("[qdrant/master/md]")
     assert output.results[0].metadata.source == "qdrant"
+
+
+def test_structured_tool_is_registered() -> None:
+    """Confirm the retrieval tool is registered as a StructuredTool."""
+    assert retrieve_technical_docs.name == "retrieve_technical_docs"
+    assert retrieve_technical_docs.args_schema is RetrievalQuery
+    assert "source" in retrieve_technical_docs.description
+    assert "version" in retrieve_technical_docs.description
+    assert "doc_type" in retrieve_technical_docs.description
+
+
+def test_agent_graph_compiles() -> None:
+    """Confirm the LangGraph StateGraph research agent compiles."""
+    graph = build_research_graph()
+
+    assert graph is not None
+
+
+def test_prepare_tool_input_node_uses_metadata_contract() -> None:
+    """Confirm the agent prepares tool input with shared metadata filters."""
+    state = prepare_tool_input_node(
+        {
+            "query": "vector search",
+            "source": "qdrant",
+            "version": "master",
+            "doc_type": "md",
+            "top_k": 3,
+            "similarity_threshold": 0.1,
+        }
+    )
+
+    assert state["tool_input"] == {
+        "query": "vector search",
+        "source": "qdrant",
+        "version": "master",
+        "doc_type": "md",
+        "top_k": 3,
+        "similarity_threshold": 0.1,
+    }
+
+
+def test_prepare_context_node_formats_citations() -> None:
+    """Confirm the agent formats retrieved chunks into cited context."""
+    state = prepare_context_node(
+        {
+            "query": "vector search",
+            "retrieval": {
+                "results": [
+                    {
+                        "citation": "[qdrant/master/md] intro.md#chunk-0",
+                        "content": "Qdrant supports vector search.",
+                    }
+                ]
+            },
+        }
+    )
+
+    assert "Citation: [qdrant/master/md] intro.md#chunk-0" in state["answer_context"]

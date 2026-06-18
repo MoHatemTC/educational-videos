@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from langchain_core.embeddings import Embeddings
 from sentence_transformers import SentenceTransformer
 from typing_extensions import override
+from rag_tool.config import DEFAULT_EMBEDDING_MODEL, get_settings
+
 
 DEFAULT_EMBEDDING_MODEL: Final[str] = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_BATCH_SIZE: Final[int] = 32
@@ -48,6 +50,7 @@ class SentenceTransformerEmbeddingFunction(Embeddings):
         self._model: SentenceTransformer | None = None
 
     @property
+    @property
     def model(self) -> SentenceTransformer:
         """Load and return the sentence-transformers model lazily.
 
@@ -57,9 +60,14 @@ class SentenceTransformerEmbeddingFunction(Embeddings):
         model = self._model
 
         if model is None:
+            settings = get_settings()
+
+            if settings.disable_hf_symlink_warning:
+                os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+
             model = SentenceTransformer(
                 self.model_name,
-                token=os.getenv("HF_TOKEN") or None,
+                token=settings.hf_token,
             )
             self._model = model
 
@@ -123,7 +131,8 @@ def get_embedding_function(
     Returns:
         LangChain-compatible embedding function.
     """
-    resolved_model_name = model_name or os.getenv("EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODEL
+    settings = get_settings()
+    resolved_model_name = model_name or settings.embedding_model
 
     return SentenceTransformerEmbeddingFunction(
         model_name=resolved_model_name,

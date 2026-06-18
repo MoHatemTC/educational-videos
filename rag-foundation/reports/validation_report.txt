@@ -35,4 +35,11 @@ Previous year roadmap is available here:
 
 * [Roadmap 2022](roadmap-2022.md)
 
-Goals of the release:
+Technical reasoning:
+- ChromaDB was selected because the task requires metadata-aware retrieval. Chroma supports persistent local storage and structured metadata filtering through the same source/version/doc_type fields written during ingestion.
+- sentence-transformers/all-MiniLM-L6-v2 was selected because it runs locally, avoids API dependency during validation, returns compact 384-dimensional embeddings, and is suitable for semantic retrieval over short technical chunks.
+- Chunk size 900 with overlap 150 was selected to preserve enough technical context while keeping chunks small enough for efficient embedding and retrieval. The overlap reduces boundary loss when code or explanations span chunk edges.
+- Deterministic chunk IDs are generated from source, version, path, and chunk index. This makes re-ingestion idempotent because the same logical chunk writes to the same vector ID.
+- The retrieval tool filters only on source, version, and doc_type because those are the shared metadata contract fields written by ingestion.
+- Citations include source, version, doc_type, path, and chunk index so downstream agent nodes can trace every returned chunk.
+- redoc-generated OpenAPI snapshots are ignored because they dominate the corpus with generated JSON and reduce the quality of documentation retrieval.
