@@ -39,9 +39,7 @@ def retrieve_technical_docs_function(
         doc_type=doc_type,
         top_k=top_k or settings.default_top_k,
         similarity_threshold=(
-            similarity_threshold
-            if similarity_threshold is not None
-            else settings.default_similarity_threshold
+            similarity_threshold if similarity_threshold is not None else settings.default_similarity_threshold
         ),
     )
 

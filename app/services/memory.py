@@ -18,8 +18,15 @@ class MemoryService:
         self._memory: AsyncMemory | None = None
 
     async def _get_memory(self) -> AsyncMemory:
-        if self._memory is None:
-            self._memory = await AsyncMemory.from_config(
+        """Get or create the shared mem0 AsyncMemory instance.
+
+        Returns:
+            Cached AsyncMemory instance.
+        """
+        memory = self._memory
+
+        if memory is None:
+            memory = AsyncMemory.from_config(
                 config_dict={
                     "vector_store": {
                         "provider": "pgvector",
@@ -42,7 +49,9 @@ class MemoryService:
                     },
                 }
             )
-        return self._memory
+            self._memory = memory
+
+        return memory
 
     async def initialize(self) -> None:
         """Pre-warm the mem0 AsyncMemory instance and its pgvector connection pool.

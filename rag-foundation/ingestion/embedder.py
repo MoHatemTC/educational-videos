@@ -10,7 +10,6 @@ from typing_extensions import override
 from rag_tool.config import DEFAULT_EMBEDDING_MODEL, get_settings
 
 
-DEFAULT_EMBEDDING_MODEL: Final[str] = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_BATCH_SIZE: Final[int] = 32
 
 load_dotenv()
@@ -49,7 +48,6 @@ class SentenceTransformerEmbeddingFunction(Embeddings):
         self.normalize_embeddings = normalize_embeddings
         self._model: SentenceTransformer | None = None
 
-    @property
     @property
     def model(self) -> SentenceTransformer:
         """Load and return the sentence-transformers model lazily.

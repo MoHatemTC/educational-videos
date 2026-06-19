@@ -3,7 +3,6 @@
 from rag_tool.tool_definition import retrieve_technical_docs
 from agent.research_agent import (
     build_research_graph,
-    call_retrieval_tool_node,
     prepare_context_node,
     prepare_tool_input_node,
 )
@@ -11,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from typing import Any
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from pydantic import ValidationError
@@ -315,3 +315,92 @@ def test_prepare_context_node_formats_citations() -> None:
     )
 
     assert "Citation: [qdrant/master/md] intro.md#chunk-0" in state["answer_context"]
+
+
+def test_vector_store_upsert_uses_mocked_collection_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Upsert chunks through a mocked vector-store collection client."""
+
+    class MockCollection:
+        """Minimal mocked Chroma collection for vector-store unit testing."""
+
+        def __init__(self) -> None:
+            """Initialize the mocked collection."""
+            self.ids: list[str] = []
+            self.documents: list[str] = []
+            self.metadatas: list[dict[str, Any]] = []
+            self.embeddings: list[list[float]] = []
+            self.upsert_calls = 0
+
+        def count(self) -> int:
+            """Return the number of unique stored vector IDs."""
+            return len(self.ids)
+
+        def upsert(
+            self,
+            ids: list[str],
+            documents: list[str],
+            metadatas: list[dict[str, Any]],
+            embeddings: list[list[float]],
+        ) -> None:
+            """Mock Chroma upsert behavior using stable IDs."""
+            self.upsert_calls += 1
+
+            for index, chunk_id in enumerate(ids):
+                if chunk_id in self.ids:
+                    existing_index = self.ids.index(chunk_id)
+                    self.documents[existing_index] = documents[index]
+                    self.metadatas[existing_index] = metadatas[index]
+                    self.embeddings[existing_index] = embeddings[index]
+                    continue
+
+                self.ids.append(chunk_id)
+                self.documents.append(documents[index])
+                self.metadatas.append(metadatas[index])
+                self.embeddings.append(embeddings[index])
+
+    collection = MockCollection()
+
+    monkeypatch.setattr(
+        "ingestion.vector_store.get_collection",
+        lambda persist_dir=None, collection_name=None: collection,
+    )
+
+    document = Document(
+        page_content="Qdrant vector search supports metadata filters.",
+        metadata={
+            "source": "qdrant",
+            "version": "master",
+            "doc_type": "md",
+            "path": "intro.md",
+            "chunk_index": 0,
+            "chunk_id": "stable-chunk-id",
+            "content_hash": "stable-content-hash",
+        },
+    )
+
+    first_stats = upsert_documents(
+        documents=[document],
+        embedding_function=FakeEmbeddings(),
+        persist_dir="mocked",
+        collection_name="mocked_collection",
+    )
+    second_stats = upsert_documents(
+        documents=[document],
+        embedding_function=FakeEmbeddings(),
+        persist_dir="mocked",
+        collection_name="mocked_collection",
+    )
+
+    assert first_stats.submitted == 1
+    assert first_stats.count_before == 0
+    assert first_stats.count_after == 1
+    assert second_stats.count_before == 1
+    assert second_stats.count_after == 1
+    assert second_stats.net_new_vectors == 0
+    assert collection.upsert_calls == 2
+    assert collection.ids == ["stable-chunk-id"]
+    assert collection.metadatas[0]["source"] == "qdrant"
+    assert collection.metadatas[0]["version"] == "master"
+    assert collection.metadatas[0]["doc_type"] == "md"

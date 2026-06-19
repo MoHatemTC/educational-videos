@@ -74,8 +74,7 @@ def get_settings() -> RagSettings:
         chroma_persist_dir=Path(
             os.getenv("CHROMA_PERSIST_DIR", DEFAULT_CHROMA_PERSIST_DIR),
         ),
-        chroma_collection=os.getenv(
-            "CHROMA_COLLECTION", DEFAULT_CHROMA_COLLECTION),
+        chroma_collection=os.getenv("CHROMA_COLLECTION", DEFAULT_CHROMA_COLLECTION),
         default_top_k=int(os.getenv("DEFAULT_TOP_K", str(DEFAULT_TOP_K))),
         default_similarity_threshold=float(
             os.getenv(

@@ -43,3 +43,10 @@ Technical reasoning:
 - The retrieval tool filters only on source, version, and doc_type because those are the shared metadata contract fields written by ingestion.
 - Citations include source, version, doc_type, path, and chunk index so downstream agent nodes can trace every returned chunk.
 - redoc-generated OpenAPI snapshots are ignored because they dominate the corpus with generated JSON and reduce the quality of documentation retrieval.
+
+Additional retrieval design reasoning:
+- The vector store keeps ChromaDB's local default distance-based ranking because the sprint requirement is a lightweight persistent retrieval foundation, not custom index tuning. The sentence-transformer embeddings are normalized before storage, which makes distance-based nearest-neighbor ranking stable for semantic retrieval over short documentation chunks.
+- Raw vector distances are lower-is-better, but the retrieval API exposes a higher-is-better score for agent use. The retriever converts distance into a bounded score so downstream nodes can apply a simple similarity threshold without depending on Chroma-specific distance semantics.
+- The similarity threshold is applied after fetching more than top_k results. This post-filtering step lets the retriever discard weak matches while still returning the requested number of strong chunks when available.
+- The default threshold of 0.35 is intentionally conservative for local validation. It avoids empty results on small corpora while still allowing stricter thresholds to be passed by the CLI, StructuredTool, or agent state.
+- The retriever fetches top_k multiplied by a small fetch multiplier before filtering so metadata filters and threshold filtering do not accidentally remove all candidates too early.
