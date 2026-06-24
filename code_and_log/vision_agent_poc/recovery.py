@@ -108,7 +108,6 @@ class RecoveryConfig:
     @classmethod
     def from_yaml(cls, path: str | Path) -> RecoveryConfig:
         """Load recovery configuration from a YAML file."""
-
         return load_recovery_config(path)
 
 
@@ -152,7 +151,6 @@ class AnthropicVisionRecoveryClient:
         min_confidence: float = 0.55,
     ) -> None:
         """Initialize with an Anthropic client or lazily create one."""
-
         self.model = model
         self.recovery_wait_ms = recovery_wait_ms
         self.min_confidence = min_confidence
@@ -162,10 +160,7 @@ class AnthropicVisionRecoveryClient:
         try:
             import anthropic
         except ImportError as exc:
-            msg = (
-                "The anthropic package is required to use "
-                "AnthropicVisionRecoveryClient."
-            )
+            msg = "The anthropic package is required to use AnthropicVisionRecoveryClient."
             raise RuntimeError(msg) from exc
         self.client = anthropic.Anthropic()
 
@@ -175,7 +170,6 @@ class AnthropicVisionRecoveryClient:
         context: Mapping[str, Any] | None = None,
     ) -> VisionRecoveryPlan:
         """Ask Claude to classify the interruption and plan safe recovery."""
-
         response = self.client.messages.create(
             model=self.model,
             max_tokens=1200,
@@ -200,7 +194,6 @@ class AnthropicVisionRecoveryClient:
 
     def _prompt(self, context: Mapping[str, Any] | None) -> str:
         """Build the strict JSON instruction prompt for Claude."""
-
         context_json = json.dumps(dict(context or {}), default=str, sort_keys=True)
         return (
             "You are controlling a browser using vision only. "
@@ -210,12 +203,12 @@ class AnthropicVisionRecoveryClient:
             "walls, return blocked=true and no recovery actions. If there is "
             "a dismiss, accept, close, or continue-without-signing-in button, "
             "return its approximate screen coordinates. Return only valid JSON "
-            "with this exact shape: {\"interruption_type\":\"COOKIE_BANNER\","
-            "\"confidence\":0.92,\"explanation\":\"...\",\"blocked\":false,"
-            "\"target\":{\"label\":\"Accept all\",\"x\":842,\"y\":704,"
-            "\"reason\":\"Button dismisses the banner.\"},\"actions\":["
-            "{\"name\":\"click\",\"args\":{\"x\":842,\"y\":704}},"
-            f"{{\"name\":\"wait\",\"args\":{{\"ms\":{self.recovery_wait_ms}}}}}"
+            'with this exact shape: {"interruption_type":"COOKIE_BANNER",'
+            '"confidence":0.92,"explanation":"...","blocked":false,'
+            '"target":{"label":"Accept all","x":842,"y":704,'
+            '"reason":"Button dismisses the banner."},"actions":['
+            '{"name":"click","args":{"x":842,"y":704}},'
+            f'{{"name":"wait","args":{{"ms":{self.recovery_wait_ms}}}}}'
             "]}. Allowed interruption_type values are NONE, COOKIE_BANNER, "
             "POPUP_MODAL, LOGIN_WALL, CAPTCHA, LAYOUT_SHIFT, NAVIGATION_ERROR, "
             "and UNKNOWN. Allowed action names are click, key, wait, reload, "
@@ -232,7 +225,6 @@ class RecoveryManager:
         vision_client: VisionRecoveryClient | None = None,
     ) -> None:
         """Initialize with optional config and injected vision client."""
-
         self.config = config or RecoveryConfig()
         self.vision_client = vision_client
         self.total_attempts = 0
@@ -247,7 +239,6 @@ class RecoveryManager:
         current: bytes | Image.Image,
     ) -> float:
         """Return a normalized visual difference score between two screenshots."""
-
         previous_image = _to_rgb_image(previous)
         current_image = _to_rgb_image(current)
         if previous_image.size != current_image.size:
@@ -263,7 +254,6 @@ class RecoveryManager:
         current: bytes | Image.Image,
     ) -> bool:
         """Return whether current screenshot diverges from the expected screenshot."""
-
         if not self.config.enabled or expected is None:
             return False
         return self.screenshot_diff(expected, current) >= self.config.screenshot_diff_threshold
@@ -274,7 +264,6 @@ class RecoveryManager:
         context: Mapping[str, Any] | None = None,
     ) -> InterruptionType:
         """Classify a screenshot by asking the configured vision client."""
-
         return self.analyze_interruption(screenshot, context).interruption_type
 
     def analyze_interruption(
@@ -283,7 +272,6 @@ class RecoveryManager:
         context: Mapping[str, Any] | None = None,
     ) -> VisionRecoveryPlan:
         """Return a vision recovery plan for a screenshot."""
-
         return self._vision_client().analyze_interruption(
             _to_png_bytes(screenshot),
             context,
@@ -295,7 +283,6 @@ class RecoveryManager:
         image_size: tuple[int, int] | None = None,
     ) -> list[RecoveryAction]:
         """Return only non-coordinate fallback actions for compatible callers."""
-
         del image_size
         wait = self.config.recovery_wait_ms
         if interruption_type in {InterruptionType.CAPTCHA, InterruptionType.LOGIN_WALL}:
@@ -326,7 +313,6 @@ class RecoveryManager:
         backend: Any,
     ) -> dict[str, list[str]]:
         """Execute planned recovery actions through an optional-method backend."""
-
         executed: list[str] = []
         skipped: list[str] = []
         for action in actions:
@@ -350,21 +336,16 @@ class RecoveryManager:
         interruption_type: InterruptionType,
     ) -> bool:
         """Return whether recovery may proceed under retry limits."""
-
         if self.total_attempts >= self.config.max_total_recovery_attempts:
             return False
         if self.attempts_by_step.get(step_id, 0) >= self.config.max_attempts_per_step:
             return False
-        if (
-            self.attempts_by_type.get(interruption_type, 0)
-            >= self.config.max_attempts_per_interruption_type
-        ):
+        if self.attempts_by_type.get(interruption_type, 0) >= self.config.max_attempts_per_interruption_type:
             return False
         return True
 
     def log_event(self, event: RecoveryEvent) -> None:
         """Append a recovery event as one valid JSONL line."""
-
         self.config.log_path.parent.mkdir(parents=True, exist_ok=True)
         with self.config.log_path.open("a", encoding="utf-8") as log_file:
             log_file.write(json.dumps(asdict(event), sort_keys=True) + "\n")
@@ -380,13 +361,8 @@ class RecoveryManager:
         context: Mapping[str, Any] | None = None,
     ) -> RecoveryDecision:
         """Analyze, recover, re-observe, confirm, and retry after observation."""
-
         observed_image = _to_rgb_image(observed_screenshot)
-        diff_score = (
-            None
-            if expected_screenshot is None
-            else self.screenshot_diff(expected_screenshot, observed_image)
-        )
+        diff_score = None if expected_screenshot is None else self.screenshot_diff(expected_screenshot, observed_image)
         url = self._resolve_url(context, backend)
         if not self.config.enabled:
             return RecoveryDecision(
@@ -508,11 +484,7 @@ class RecoveryManager:
 
             execution = self.execute_recovery(actions, backend)
             after_screenshot = self._observe_after_recovery(backend)
-            after_plan = (
-                self.analyze_interruption(after_screenshot, context)
-                if after_screenshot is not None
-                else None
-            )
+            after_plan = self.analyze_interruption(after_screenshot, context) if after_screenshot is not None else None
             # Re-observe before retrying so the original action is repeated
             # only after the interruption is gone or the screen changed.
             details = self._recovery_details(
@@ -612,7 +584,6 @@ class RecoveryManager:
         context: Mapping[str, Any] | None = None,
     ) -> RecoveryDecision:
         """Backward-compatible wrapper around the post-observe hook."""
-
         return self.post_observe_recovery_hook(
             step_id=step_id,
             original_step=original_step,
@@ -624,7 +595,6 @@ class RecoveryManager:
 
     def _vision_client(self) -> VisionRecoveryClient:
         """Return the injected vision client or create the configured default."""
-
         if self.vision_client is None:
             self.vision_client = AnthropicVisionRecoveryClient(
                 model=self.config.vision_model,
@@ -635,7 +605,6 @@ class RecoveryManager:
 
     def _actions_from_plan(self, plan: VisionRecoveryPlan) -> list[RecoveryAction]:
         """Prefer vision-planned actions and create minimal safe fallbacks."""
-
         if plan.interruption_type in self.config.blocked_types or plan.blocked:
             return []
         if plan.interruption_type == InterruptionType.UNKNOWN:
@@ -655,17 +624,13 @@ class RecoveryManager:
         interruption_type: InterruptionType,
     ) -> int:
         """Increment retry counters and return the step attempt number."""
-
         self.total_attempts += 1
         self.attempts_by_step[step_id] = self.attempts_by_step.get(step_id, 0) + 1
-        self.attempts_by_type[interruption_type] = (
-            self.attempts_by_type.get(interruption_type, 0) + 1
-        )
+        self.attempts_by_type[interruption_type] = self.attempts_by_type.get(interruption_type, 0) + 1
         return self.attempts_by_step[step_id]
 
     def _observe_after_recovery(self, backend: Any) -> Image.Image | None:
         """Take a screenshot after recovery if the backend supports it."""
-
         screenshot_method = getattr(backend, "screenshot", None)
         if screenshot_method is None:
             return None
@@ -679,7 +644,6 @@ class RecoveryManager:
         after_plan: VisionRecoveryPlan | None,
     ) -> dict[str, Any]:
         """Build details describing whether recovery was confirmed."""
-
         if after is None:
             return {
                 "reobserved": False,
@@ -690,16 +654,9 @@ class RecoveryManager:
         details: dict[str, Any] = {
             "reobserved": True,
             "before_after_diff": before_after_diff,
-            "screen_changed_meaningfully": (
-                before_after_diff >= self.config.stable_screen_threshold
-            ),
-            "vision_after_type": (
-                after_plan.interruption_type.value if after_plan is not None else None
-            ),
-            "vision_after_none": (
-                after_plan is not None
-                and after_plan.interruption_type == InterruptionType.NONE
-            ),
+            "screen_changed_meaningfully": (before_after_diff >= self.config.stable_screen_threshold),
+            "vision_after_type": (after_plan.interruption_type.value if after_plan is not None else None),
+            "vision_after_none": (after_plan is not None and after_plan.interruption_type == InterruptionType.NONE),
         }
         if expected_screenshot is not None:
             before_expected = self.screenshot_diff(expected_screenshot, before)
@@ -711,7 +668,6 @@ class RecoveryManager:
 
     def _recovery_confirmed(self, details: Mapping[str, Any]) -> bool:
         """Return whether re-observation confirmed recovery."""
-
         return bool(
             details.get("vision_after_none")
             or details.get("screen_changed_meaningfully")
@@ -724,7 +680,6 @@ class RecoveryManager:
         interruption_type: InterruptionType,
     ) -> bool:
         """Track consecutive same-class same-URL failures."""
-
         key = (url, interruption_type)
         # Same-class same-URL streaks catch loops that normal per-step counters
         # can miss when the agent keeps revisiting the same blocked surface.
@@ -737,7 +692,6 @@ class RecoveryManager:
 
     def _reset_streak(self) -> None:
         """Reset the same-class same-URL streak after stable or NONE screens."""
-
         self._last_streak_key = None
         self._same_class_url_streak = 0
 
@@ -747,7 +701,6 @@ class RecoveryManager:
         backend: Any,
     ) -> str:
         """Resolve the current URL from context or optional backend accessors."""
-
         if context is not None and context.get("url"):
             return str(context["url"])
         for name in ("current_url", "url"):
@@ -772,7 +725,6 @@ class RecoveryManager:
         reason: str,
     ) -> RecoveryDecision:
         """Log and return a no-interruption decision."""
-
         self._log(
             url=url,
             step_id=step_id,
@@ -808,7 +760,6 @@ class RecoveryManager:
         details: dict[str, Any],
     ) -> None:
         """Create and write a recovery event."""
-
         event = RecoveryEvent(
             timestamp=_timestamp(),
             url=url,
@@ -831,7 +782,6 @@ class RecoveryManager:
 
 def load_recovery_config(path: str | Path) -> RecoveryConfig:
     """Load recovery config from an agent YAML file."""
-
     try:
         import yaml
     except ImportError:
@@ -860,9 +810,7 @@ def load_recovery_config(path: str | Path) -> RecoveryConfig:
 
     blocked_types = recovery.get("blocked_types")
     if blocked_types is not None:
-        values["blocked_types"] = tuple(
-            _interruption_type_from_string(item) for item in blocked_types
-        )
+        values["blocked_types"] = tuple(_interruption_type_from_string(item) for item in blocked_types)
 
     log_path = logging.get("path", recovery.get("log_path"))
     if log_path is not None:
@@ -887,7 +835,6 @@ def load_recovery_config(path: str | Path) -> RecoveryConfig:
 
 def _json_from_model_response(response: Any) -> Mapping[str, Any]:
     """Extract strict JSON from an Anthropic response object."""
-
     texts: list[str] = []
     for block in getattr(response, "content", []):
         text = getattr(block, "text", None)
@@ -909,7 +856,6 @@ def _json_from_model_response(response: Any) -> Mapping[str, Any]:
 
 def _safe_plan_from_response(response: Any) -> VisionRecoveryPlan:
     """Parse a model response, warning and falling back to NONE on bad output."""
-
     try:
         return _plan_from_mapping(_json_from_model_response(response))
     except Exception as exc:  # noqa: BLE001
@@ -919,7 +865,6 @@ def _safe_plan_from_response(response: Any) -> VisionRecoveryPlan:
 
 def _plan_from_mapping(data: Mapping[str, Any]) -> VisionRecoveryPlan:
     """Validate and convert JSON-like data into a recovery plan."""
-
     raw_type = data.get("interruption_type")
     if raw_type is None:
         logging.warning("Vision recovery model output missing interruption_type.")
@@ -931,9 +876,7 @@ def _plan_from_mapping(data: Mapping[str, Any]) -> VisionRecoveryPlan:
         return _fallback_none_plan()
     target = _target_from_mapping(data.get("target"))
     actions = [
-        action
-        for action in (_action_from_mapping(item) for item in data.get("actions", []))
-        if action is not None
+        action for action in (_action_from_mapping(item) for item in data.get("actions", [])) if action is not None
     ]
     try:
         confidence = max(0.0, min(1.0, float(data.get("confidence", 0.0))))
@@ -952,7 +895,6 @@ def _plan_from_mapping(data: Mapping[str, Any]) -> VisionRecoveryPlan:
 
 def _target_from_mapping(value: Any) -> RecoveryTarget | None:
     """Convert a JSON target object into a recovery target."""
-
     if value is None:
         return None
     if not isinstance(value, Mapping):
@@ -972,7 +914,6 @@ def _target_from_mapping(value: Any) -> RecoveryTarget | None:
 
 def _action_from_mapping(value: Any) -> RecoveryAction | None:
     """Convert a JSON action object into a recovery action."""
-
     if not isinstance(value, Mapping):
         logging.warning("Ignoring invalid recovery action: %s", value)
         return None
@@ -989,7 +930,6 @@ def _action_from_mapping(value: Any) -> RecoveryAction | None:
 
 def _fallback_none_plan() -> VisionRecoveryPlan:
     """Return the required safe fallback plan for unexpected model output."""
-
     return VisionRecoveryPlan(
         interruption_type=InterruptionType.NONE,
         confidence=0.0,
@@ -1002,7 +942,6 @@ def _fallback_none_plan() -> VisionRecoveryPlan:
 
 def _to_rgb_image(value: bytes | Image.Image) -> Image.Image:
     """Convert supported screenshot input to an RGB Pillow image."""
-
     if isinstance(value, Image.Image):
         return value.convert("RGB")
     return Image.open(BytesIO(value)).convert("RGB")
@@ -1010,7 +949,6 @@ def _to_rgb_image(value: bytes | Image.Image) -> Image.Image:
 
 def _to_png_bytes(value: bytes | Image.Image) -> bytes:
     """Normalize supported screenshot input to PNG bytes."""
-
     image = _to_rgb_image(value)
     buffer = BytesIO()
     image.save(buffer, format="PNG")
@@ -1019,19 +957,16 @@ def _to_png_bytes(value: bytes | Image.Image) -> bytes:
 
 def _screenshot_hash(value: bytes | Image.Image) -> str:
     """Return a sha256 hash of normalized PNG screenshot bytes."""
-
     return hashlib.sha256(_to_png_bytes(value)).hexdigest()
 
 
 def _timestamp() -> str:
     """Return the current local time as an ISO timestamp with timezone."""
-
     return datetime.now().astimezone().isoformat()
 
 
 def _interruption_type_from_string(value: Any) -> InterruptionType:
     """Convert config or model strings into interruption enum values."""
-
     if isinstance(value, InterruptionType):
         return value
     normalized = str(value).strip().upper()
@@ -1044,7 +979,6 @@ def _interruption_type_from_string(value: Any) -> InterruptionType:
 
 def _load_simple_yaml(path: str | Path) -> dict[str, Any]:
     """Parse the limited YAML subset used by agent_config.yaml when PyYAML is absent."""
-
     root: dict[str, Any] = {}
     section: dict[str, Any] | None = None
     current_list_key: str | None = None
@@ -1078,7 +1012,6 @@ def _load_simple_yaml(path: str | Path) -> dict[str, Any]:
 
 def _parse_simple_yaml_scalar(value: str) -> Any:
     """Parse a basic YAML scalar."""
-
     lower = value.lower()
     if lower == "true":
         return True

@@ -47,7 +47,6 @@ REQUIRED_LOG_KEYS = {
 
 def make_blank_page() -> Image.Image:
     """Create a simple stable application page."""
-
     image = Image.new("RGB", (1024, 768), "white")
     draw = ImageDraw.Draw(image)
     draw.rectangle((64, 56, 960, 112), fill=(244, 246, 248), outline=(215, 220, 225))
@@ -58,7 +57,6 @@ def make_blank_page() -> Image.Image:
 
 def make_interrupted_page() -> Image.Image:
     """Create a visually divergent page for diff tests."""
-
     image = make_blank_page()
     draw = ImageDraw.Draw(image)
     draw.rectangle((0, 500, 1024, 768), fill=(20, 30, 45))
@@ -67,7 +65,6 @@ def make_interrupted_page() -> Image.Image:
 
 def image_to_bytes(image: Image.Image) -> bytes:
     """Serialize an image to PNG bytes."""
-
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue()
@@ -78,7 +75,6 @@ class FakeVisionRecoveryClient:
 
     def __init__(self, plans: list[VisionRecoveryPlan]) -> None:
         """Initialize with deterministic plans."""
-
         self.plans = list(plans)
         self.calls: list[tuple[bytes, Mapping[str, Any] | None]] = []
 
@@ -88,7 +84,6 @@ class FakeVisionRecoveryClient:
         context: Mapping[str, Any] | None = None,
     ) -> VisionRecoveryPlan:
         """Return the next queued plan or a no-interruption plan."""
-
         self.calls.append((screenshot, context))
         if self.plans:
             return self.plans.pop(0)
@@ -105,7 +100,6 @@ class FakeComputerBackend:
         url: str = "https://example.com/page",
     ) -> None:
         """Initialize with optional queued screenshots and ordering log."""
-
         self.actions: list[tuple] = []
         self.screenshots = screenshots or []
         self.order = order
@@ -113,7 +107,6 @@ class FakeComputerBackend:
 
     def screenshot(self) -> Image.Image:
         """Return the next queued screenshot."""
-
         self.actions.append(("screenshot",))
         if self.order is not None:
             self.order.append("screenshot")
@@ -123,32 +116,26 @@ class FakeComputerBackend:
 
     def key(self, value: str) -> None:
         """Record a key press."""
-
         self.actions.append(("key", value))
 
     def click(self, x: int, y: int) -> None:
         """Record a mouse click."""
-
         self.actions.append(("click", x, y))
 
     def wait(self, ms: int) -> None:
         """Record a wait."""
-
         self.actions.append(("wait", ms))
 
     def reload(self) -> None:
         """Record a page reload."""
-
         self.actions.append(("reload",))
 
     def back(self) -> None:
         """Record browser back."""
-
         self.actions.append(("back",))
 
     def scroll(self, dx: int, dy: int) -> None:
         """Record a scroll."""
-
         self.actions.append(("scroll", dx, dy))
 
 
@@ -157,19 +144,16 @@ class FakeAnthropicClient:
 
     def __init__(self, text: str) -> None:
         """Initialize with response text."""
-
         self.messages = SimpleNamespace(create=self.create)
         self.text = text
 
     def create(self, **_kwargs: Any) -> Any:
         """Return a minimal Anthropic-like response object."""
-
         return SimpleNamespace(content=[SimpleNamespace(text=self.text)])
 
 
 def none_plan() -> VisionRecoveryPlan:
     """Return a no-interruption vision plan."""
-
     return VisionRecoveryPlan(
         interruption_type=InterruptionType.NONE,
         confidence=1.0,
@@ -188,7 +172,6 @@ def plan(
     blocked: bool = False,
 ) -> VisionRecoveryPlan:
     """Build a deterministic fake vision plan."""
-
     return VisionRecoveryPlan(
         interruption_type=interruption_type,
         confidence=0.92,
@@ -205,7 +188,6 @@ def manager_with_fake_client(
     config: RecoveryConfig | None = None,
 ) -> tuple[RecoveryManager, FakeVisionRecoveryClient]:
     """Create a recovery manager with temp logging and fake vision."""
-
     fake = FakeVisionRecoveryClient(plans)
     recovery_config = config or RecoveryConfig(log_path=tmp_path / "events.jsonl")
     recovery_config.log_path = tmp_path / "events.jsonl"
@@ -214,7 +196,6 @@ def manager_with_fake_client(
 
 def recovery_config(tmp_path: Path, **overrides: Any) -> RecoveryConfig:
     """Create a recovery config with generous defaults for loop tests."""
-
     values = {
         "log_path": tmp_path / "events.jsonl",
         "max_total_recovery_attempts": 10,
@@ -227,7 +208,6 @@ def recovery_config(tmp_path: Path, **overrides: Any) -> RecoveryConfig:
 
 def escape_action() -> RecoveryAction:
     """Return a valid Escape key recovery action."""
-
     return RecoveryAction("key", {"value": "Escape"})
 
 
@@ -238,7 +218,6 @@ def run_recovery(
     backend: FakeComputerBackend | None = None,
 ) -> RecoveryDecision:
     """Run a standard recovery attempt against an interrupted page."""
-
     return manager.recover_and_retry(
         step_id="step",
         original_step=None,
@@ -251,7 +230,6 @@ def run_recovery(
 
 def test_recovery_manager_calls_vision_client(tmp_path: Path) -> None:
     """Classification comes from the vision client."""
-
     manager, fake = manager_with_fake_client(tmp_path, [none_plan()])
     decision = run_recovery(manager, url="https://example.com/unit")
     assert decision.outcome == RecoveryOutcome.NO_INTERRUPTION
@@ -262,7 +240,6 @@ def test_recovery_manager_calls_vision_client(tmp_path: Path) -> None:
 
 def test_cookie_banner_uses_vision_target_coordinates(tmp_path: Path) -> None:
     """Cookie recovery clicks the coordinate returned by the vision plan."""
-
     target = RecoveryTarget("Accept all", 123, 456, "Dismisses banner.")
     manager, _fake = manager_with_fake_client(
         tmp_path,
@@ -277,7 +254,6 @@ def test_cookie_banner_uses_vision_target_coordinates(tmp_path: Path) -> None:
 
 def test_popup_uses_vision_target_coordinates(tmp_path: Path) -> None:
     """Popup recovery follows explicit coordinates from the vision plan."""
-
     actions = [
         RecoveryAction("click", {"x": 321, "y": 222}),
         RecoveryAction("wait", {"ms": 700}),
@@ -294,7 +270,6 @@ def test_popup_uses_vision_target_coordinates(tmp_path: Path) -> None:
 
 def test_login_wall_blocks_from_vision_plan(tmp_path: Path) -> None:
     """Login walls block when the vision plan marks them blocked."""
-
     manager, _fake = manager_with_fake_client(
         tmp_path,
         [plan(InterruptionType.LOGIN_WALL, blocked=True)],
@@ -307,7 +282,6 @@ def test_login_wall_blocks_from_vision_plan(tmp_path: Path) -> None:
 
 def test_captcha_blocks_from_vision_plan(tmp_path: Path) -> None:
     """Captchas block without any solving or bypass actions."""
-
     manager, _fake = manager_with_fake_client(
         tmp_path,
         [plan(InterruptionType.CAPTCHA, blocked=True)],
@@ -321,7 +295,6 @@ def test_captcha_blocks_from_vision_plan(tmp_path: Path) -> None:
 
 def test_recovery_executes_planned_actions(tmp_path: Path) -> None:
     """The manager executes the action sequence returned by the vision model."""
-
     actions = [
         RecoveryAction("reload"),
         RecoveryAction("wait", {"ms": 700}),
@@ -339,7 +312,6 @@ def test_recovery_executes_planned_actions(tmp_path: Path) -> None:
 
 def test_reobserve_happens_before_retry(tmp_path: Path) -> None:
     """The original step is retried only after the post-action screenshot."""
-
     order: list[str] = []
 
     def original_step() -> None:
@@ -370,7 +342,6 @@ def test_reobserve_happens_before_retry(tmp_path: Path) -> None:
 
 def test_original_step_retried_after_successful_reobserve(tmp_path: Path) -> None:
     """A confirmed recovery retries the original step once."""
-
     calls = {"count": 0}
 
     def original_step() -> None:
@@ -400,7 +371,6 @@ def test_original_step_retried_after_successful_reobserve(tmp_path: Path) -> Non
 
 def test_loop_guard_stops_after_limit(tmp_path: Path) -> None:
     """Basic retry counters still return retry exhausted."""
-
     config = recovery_config(tmp_path, max_total_recovery_attempts=1)
     manager, _fake = manager_with_fake_client(
         tmp_path,
@@ -427,7 +397,6 @@ def test_loop_guard_stops_after_limit(tmp_path: Path) -> None:
 
 def test_same_class_same_url_streak_exhausts(tmp_path: Path) -> None:
     """Repeated same class on the same URL exhausts the streak guard."""
-
     config = recovery_config(tmp_path, max_consecutive_same_class_url=2)
     manager, _fake = manager_with_fake_client(
         tmp_path,
@@ -447,7 +416,6 @@ def test_same_class_same_url_streak_exhausts(tmp_path: Path) -> None:
 
 def test_same_class_different_url_resets_streak(tmp_path: Path) -> None:
     """Changing URLs resets the same-class streak."""
-
     config = recovery_config(tmp_path, max_consecutive_same_class_url=1)
     manager, _fake = manager_with_fake_client(
         tmp_path,
@@ -465,7 +433,6 @@ def test_same_class_different_url_resets_streak(tmp_path: Path) -> None:
 
 def test_different_class_same_url_resets_streak(tmp_path: Path) -> None:
     """Changing interruption class resets the same-URL streak."""
-
     config = recovery_config(tmp_path, max_consecutive_same_class_url=1)
     manager, _fake = manager_with_fake_client(
         tmp_path,
@@ -483,7 +450,6 @@ def test_different_class_same_url_resets_streak(tmp_path: Path) -> None:
 
 def test_none_classification_resets_streak(tmp_path: Path) -> None:
     """A NONE classification resets the same-class same-URL streak."""
-
     config = recovery_config(tmp_path, max_consecutive_same_class_url=1)
     manager, _fake = manager_with_fake_client(
         tmp_path,
@@ -503,7 +469,6 @@ def test_none_classification_resets_streak(tmp_path: Path) -> None:
 
 def test_jsonl_logging_required_schema(tmp_path: Path) -> None:
     """Recovery logs include the required JSONL schema keys."""
-
     manager, _fake = manager_with_fake_client(
         tmp_path,
         [
@@ -528,7 +493,6 @@ def test_jsonl_logging_required_schema(tmp_path: Path) -> None:
 
 def test_manual_jsonl_logging_still_writes_valid_json(tmp_path: Path) -> None:
     """Direct log_event calls still append valid JSONL."""
-
     log_path = tmp_path / "manual.jsonl"
     manager = RecoveryManager(config=RecoveryConfig(log_path=log_path))
     manager.log_event(
@@ -553,7 +517,6 @@ def test_manual_jsonl_logging_still_writes_valid_json(tmp_path: Path) -> None:
 
 def test_config_loading_vision_mode(tmp_path: Path) -> None:
     """Config loading parses recovery mode and vision model settings."""
-
     config_path = tmp_path / "agent_config.yaml"
     config_path.write_text(
         """
@@ -588,14 +551,12 @@ logging:
 
 def test_screenshot_diff_still_detects_divergence(tmp_path: Path) -> None:
     """Screenshot diff remains available for divergence confirmation."""
-
     manager = RecoveryManager(config=RecoveryConfig(log_path=tmp_path / "events.jsonl"))
     assert manager.screenshot_diff(make_blank_page(), make_interrupted_page()) >= 0.18
 
 
 def test_no_divergence_returns_no_interruption(tmp_path: Path) -> None:
     """No divergence short-circuits before calling the vision client."""
-
     manager, fake = manager_with_fake_client(
         tmp_path,
         [plan(InterruptionType.COOKIE_BANNER)],
@@ -613,7 +574,6 @@ def test_no_divergence_returns_no_interruption(tmp_path: Path) -> None:
 
 def test_agent_loop_calls_recovery_hook_after_observe_action(tmp_path: Path) -> None:
     """The real agent loop calls the recovery hook after observe/action."""
-
     del tmp_path
     order: list[str] = []
 
@@ -653,7 +613,6 @@ def test_agent_loop_calls_recovery_hook_after_observe_action(tmp_path: Path) -> 
 
 def test_unexpected_model_interruption_class_falls_back_to_none(caplog: Any) -> None:
     """Unexpected model classes warn and safely fall back to NONE."""
-
     client = AnthropicVisionRecoveryClient(
         client=FakeAnthropicClient('{"interruption_type":"ALIEN","confidence":0.9}'),
     )
@@ -665,7 +624,6 @@ def test_unexpected_model_interruption_class_falls_back_to_none(caplog: Any) -> 
 
 def test_malformed_model_json_falls_back_to_none(caplog: Any) -> None:
     """Malformed model JSON warns and safely falls back to NONE."""
-
     client = AnthropicVisionRecoveryClient(client=FakeAnthropicClient("not json"))
     plan_result = client.analyze_interruption(image_to_bytes(make_blank_page()))
     assert plan_result.interruption_type == InterruptionType.NONE
@@ -675,7 +633,6 @@ def test_malformed_model_json_falls_back_to_none(caplog: Any) -> None:
 
 def test_invalid_action_from_model_is_ignored_or_safely_falls_back(caplog: Any) -> None:
     """Unsupported model actions are ignored while valid actions remain."""
-
     client = AnthropicVisionRecoveryClient(
         client=FakeAnthropicClient(
             json.dumps(

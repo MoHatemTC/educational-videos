@@ -14,7 +14,6 @@ class VisionComputerUseAgent:
 
     def __init__(self, backend: Any, recovery_manager: RecoveryManager) -> None:
         """Initialize the agent with a screenshot/action backend."""
-
         self.backend = backend
         self.recovery_manager = recovery_manager
 
@@ -25,7 +24,6 @@ class VisionComputerUseAgent:
         expected_screenshot: bytes | Image.Image | None = None,
     ) -> RecoveryDecision:
         """Run Observe -> Reason/Plan/Act -> Recovery Hook for one step."""
-
         self.backend.screenshot()
 
         # Reason/Plan/Act is represented by the caller-provided computer-use
@@ -44,7 +42,6 @@ class VisionComputerUseAgent:
 
     def current_url(self) -> str:
         """Return the current URL using optional backend accessors only."""
-
         for name in ("current_url", "url"):
             value = getattr(self.backend, name, None)
             try:
