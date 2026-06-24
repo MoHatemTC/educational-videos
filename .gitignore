@@ -20,8 +20,9 @@ wheels/
 .env.production
 
 # Tool caches
-.pytest_cache/
-.ruff_cache/
+**/.pytest_cache/
+**/.pytest_tmp/
+**/.ruff_cache/
 .mypy_cache/
 
 # Coverage
@@ -31,6 +32,7 @@ htmlcov/
 # Misc
 *.ipynb
 *.zip
+*/external/
 
 # Generated result files
 results/*
