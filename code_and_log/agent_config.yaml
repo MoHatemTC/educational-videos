@@ -1,0 +1,53 @@
+recovery:
+  # Enables the recovery layer after each observed browser state.
+  enabled: true
+  # Uses Claude vision plans for classification and coordinates.
+  mode: vision_model
+  # Hard cap across all recovery attempts in one run.
+  max_total_recovery_attempts: 8
+  # Per-agent-step cap before returning retry_exhausted.
+  max_attempts_per_step: 3
+  # Per-interruption-class cap before returning retry_exhausted.
+  max_attempts_per_interruption_type: 2
+  # Prevents repeating the same recovery class on the same URL forever.
+  max_consecutive_same_class_url: 2
+  # Diff threshold for detecting divergence from an expected screenshot only.
+  screenshot_diff_threshold: 0.18
+  # Diff threshold for confirming the screen changed after recovery.
+  stable_screen_threshold: 0.03
+  # Wait duration inserted after recovery actions such as click or key.
+  recovery_wait_ms: 700
+  # Classes that require safe stop instead of automated recovery.
+  blocked_types:
+    - CAPTCHA
+    - LOGIN_WALL
+
+vision_model:
+  provider: anthropic
+  # Claude model used to return strict JSON recovery plans.
+  model: claude-opus-4
+  require_json_plan: true
+  # Minimum confidence retained in logs for review and tuning.
+  min_confidence: 0.55
+
+computer_use:
+  provider: anthropic
+  model: claude-opus-4
+  # The agent may only reason from screenshots and computer-use actions.
+  vision_only: true
+  # DOM/CSS/XPath selectors and element handles are intentionally disabled.
+  allow_dom_selectors: false
+  backend: playwright
+  display_width_px: 1024
+  display_height_px: 768
+  max_agent_iterations: 50
+
+playwright:
+  headless: false
+  screenshot_full_page: false
+  default_timeout_ms: 10000
+
+logging:
+  # Append-only JSONL recovery event log path.
+  path: logs/recovery_events.jsonl
+  include_screenshot_hash: true
