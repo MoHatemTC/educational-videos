@@ -1,0 +1,632 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "session_id": "cd8055d3-aa15-4a12-be4a-70c98ba79583",
+    "created_at": "2026-06-17T09:27:48.579911Z",
+    "total_duration_ms": 7000.0,
+    "frame_rate": 30,
+    "resolution": {
+      "width": 1280,
+      "height": 720
+    },
+    "source_session_file": "C:\\Users\\Ahmed\\Desktop\\69\\sprint2\\claude\\New folder\\vlm_render_mapper\\sample_session.json",
+    "render_target": "ffmpeg"
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "device_pixel_ratio": 1.0
+  },
+  "frames": [
+    {
+      "frame_id": "frame_000000",
+      "timestamp_ms": 0.0,
+      "duration_ms": 1500.0,
+      "screenshot_ref": "screenshots/frame_000000.png",
+      "action": {
+        "type": "navigate",
+        "target": null,
+        "value": "https://example.com",
+        "coordinates": null,
+        "modifiers": [],
+        "scroll_delta": null,
+        "drag_start": null,
+        "drag_end": null
+      },
+      "cursor": null,
+      "highlight_regions": [],
+      "zoom_region": null,
+      "caption_ids": [
+        "cap_frame_000000"
+      ]
+    },
+    {
+      "frame_id": "frame_000001",
+      "timestamp_ms": 1500.0,
+      "duration_ms": 400.0,
+      "screenshot_ref": "screenshots/frame_000001.png",
+      "action": {
+        "type": "click",
+        "target": "#search-input",
+        "value": null,
+        "coordinates": {
+          "x": 640.0,
+          "y": 200.0
+        },
+        "modifiers": [],
+        "scroll_delta": null,
+        "drag_start": null,
+        "drag_end": null
+      },
+      "cursor": {
+        "x": 640.0,
+        "y": 200.0,
+        "visible": true,
+        "style": "pointer"
+      },
+      "highlight_regions": [
+        {
+          "region_id": "hl_frame_000001",
+          "x": 610.0,
+          "y": 170.0,
+          "width": 60.0,
+          "height": 60.0,
+          "color": "#FF4444",
+          "opacity": 0.35,
+          "border_radius": 30.0,
+          "border_color": null,
+          "border_width": null,
+          "label": "Click on #search-input"
+        }
+      ],
+      "zoom_region": {
+        "x": 133.33,
+        "y": 0.0,
+        "width": 1013.33,
+        "height": 640.0,
+        "scale": 1.5,
+        "easing": "ease_in_out",
+        "transition_duration_ms": 300.0
+      },
+      "caption_ids": [
+        "cap_frame_000001"
+      ]
+    },
+    {
+      "frame_id": "frame_000002",
+      "timestamp_ms": 1900.0,
+      "duration_ms": 600.0,
+      "screenshot_ref": "screenshots/frame_000002.png",
+      "action": {
+        "type": "type",
+        "target": "#search-input",
+        "value": "render plan example",
+        "coordinates": null,
+        "modifiers": [],
+        "scroll_delta": null,
+        "drag_start": null,
+        "drag_end": null
+      },
+      "cursor": null,
+      "highlight_regions": [],
+      "zoom_region": null,
+      "caption_ids": [
+        "cap_frame_000002"
+      ]
+    },
+    {
+      "frame_id": "frame_000003",
+      "timestamp_ms": 2500.0,
+      "duration_ms": 1500.0,
+      "screenshot_ref": "screenshots/frame_000003.png",
+      "action": {
+        "type": "key_press",
+        "target": null,
+        "value": "Enter",
+        "coordinates": null,
+        "modifiers": [],
+        "scroll_delta": null,
+        "drag_start": null,
+        "drag_end": null
+      },
+      "cursor": null,
+      "highlight_regions": [],
+      "zoom_region": null,
+      "caption_ids": [
+        "cap_frame_000003"
+      ]
+    },
+    {
+      "frame_id": "frame_000004",
+      "timestamp_ms": 4000.0,
+      "duration_ms": 1500.0,
+      "screenshot_ref": "screenshots/frame_000004.png",
+      "action": {
+        "type": "page_load",
+        "target": null,
+        "value": "https://example.com/results?q=render+plan+example",
+        "coordinates": null,
+        "modifiers": [],
+        "scroll_delta": null,
+        "drag_start": null,
+        "drag_end": null
+      },
+      "cursor": null,
+      "highlight_regions": [],
+      "zoom_region": null,
+      "caption_ids": [
+        "cap_frame_000004"
+      ]
+    },
+    {
+      "frame_id": "frame_000005",
+      "timestamp_ms": 4900.0,
+      "duration_ms": 500.0,
+      "screenshot_ref": "screenshots/frame_000005.png",
+      "action": {
+        "type": "scroll",
+        "target": null,
+        "value": null,
+        "coordinates": null,
+        "modifiers": [],
+        "scroll_delta": {
+          "x": 0.0,
+          "y": 300.0
+        },
+        "drag_start": null,
+        "drag_end": null
+      },
+      "cursor": null,
+      "highlight_regions": [],
+      "zoom_region": null,
+      "caption_ids": [
+        "cap_frame_000005"
+      ]
+    },
+    {
+      "frame_id": "frame_000006",
+      "timestamp_ms": 5400.0,
+      "duration_ms": 400.0,
+      "screenshot_ref": "screenshots/frame_000006.png",
+      "action": {
+        "type": "click",
+        "target": ".result-item:first-child a",
+        "value": null,
+        "coordinates": {
+          "x": 400.0,
+          "y": 450.0
+        },
+        "modifiers": [],
+        "scroll_delta": null,
+        "drag_start": null,
+        "drag_end": null
+      },
+      "cursor": {
+        "x": 400.0,
+        "y": 450.0,
+        "visible": true,
+        "style": "pointer"
+      },
+      "highlight_regions": [
+        {
+          "region_id": "hl_frame_000006",
+          "x": 370.0,
+          "y": 420.0,
+          "width": 60.0,
+          "height": 60.0,
+          "color": "#FF4444",
+          "opacity": 0.35,
+          "border_radius": 30.0,
+          "border_color": null,
+          "border_width": null,
+          "label": "Click on .result-item:first-child a"
+        }
+      ],
+      "zoom_region": {
+        "x": 0.0,
+        "y": 130.0,
+        "width": 1013.33,
+        "height": 640.0,
+        "scale": 1.5,
+        "easing": "ease_in_out",
+        "transition_duration_ms": 300.0
+      },
+      "caption_ids": [
+        "cap_frame_000006"
+      ]
+    },
+    {
+      "frame_id": "frame_000007",
+      "timestamp_ms": 5800.0,
+      "duration_ms": 1000.0,
+      "screenshot_ref": "screenshots/frame_000007.png",
+      "action": {
+        "type": "hover",
+        "target": ".result-item:first-child a",
+        "value": null,
+        "coordinates": {
+          "x": 400.0,
+          "y": 450.0
+        },
+        "modifiers": [],
+        "scroll_delta": null,
+        "drag_start": null,
+        "drag_end": null
+      },
+      "cursor": {
+        "x": 400.0,
+        "y": 450.0,
+        "visible": true,
+        "style": "pointer"
+      },
+      "highlight_regions": [
+        {
+          "region_id": "hl_frame_000007",
+          "x": 370.0,
+          "y": 420.0,
+          "width": 60.0,
+          "height": 60.0,
+          "color": "#4488FF",
+          "opacity": 0.25,
+          "border_radius": 30.0,
+          "border_color": null,
+          "border_width": null,
+          "label": null
+        }
+      ],
+      "zoom_region": null,
+      "caption_ids": [
+        "cap_frame_000007"
+      ]
+    },
+    {
+      "frame_id": "frame_000008",
+      "timestamp_ms": 6800.0,
+      "duration_ms": 200.0,
+      "screenshot_ref": "screenshots/frame_000008.png",
+      "action": {
+        "type": "screenshot",
+        "target": null,
+        "value": null,
+        "coordinates": null,
+        "modifiers": [],
+        "scroll_delta": null,
+        "drag_start": null,
+        "drag_end": null
+      },
+      "cursor": null,
+      "highlight_regions": [],
+      "zoom_region": null,
+      "caption_ids": [
+        "cap_frame_000008"
+      ]
+    }
+  ],
+  "timeline": {
+    "segments": [
+      {
+        "segment_id": "seg_000",
+        "start_ms": 0.0,
+        "end_ms": 7000.0,
+        "frame_ids": [
+          "frame_000000",
+          "frame_000001",
+          "frame_000002",
+          "frame_000003",
+          "frame_000004",
+          "frame_000005",
+          "frame_000006",
+          "frame_000007",
+          "frame_000008"
+        ],
+        "label": "Full session",
+        "speed_multiplier": 1.0
+      }
+    ],
+    "total_duration_ms": 7000.0
+  },
+  "cursor_path": [
+    {
+      "timestamp_ms": 1500.0,
+      "x": 640.0,
+      "y": 200.0,
+      "easing": "ease_in_out",
+      "duration_ms": 0.0
+    },
+    {
+      "timestamp_ms": 1890.0,
+      "x": 635.2,
+      "y": 205.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 2280.0,
+      "x": 620.8,
+      "y": 220.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 2670.0,
+      "x": 596.8,
+      "y": 245.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 3060.0,
+      "x": 563.2,
+      "y": 280.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 3450.0,
+      "x": 520.0,
+      "y": 325.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 3840.0,
+      "x": 476.8,
+      "y": 370.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 4230.0,
+      "x": 443.2,
+      "y": 405.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 4620.0,
+      "x": 419.2,
+      "y": 430.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 5010.0,
+      "x": 404.8,
+      "y": 445.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 5400.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 390.0
+    },
+    {
+      "timestamp_ms": 5440.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    },
+    {
+      "timestamp_ms": 5480.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    },
+    {
+      "timestamp_ms": 5520.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    },
+    {
+      "timestamp_ms": 5560.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    },
+    {
+      "timestamp_ms": 5600.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    },
+    {
+      "timestamp_ms": 5640.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    },
+    {
+      "timestamp_ms": 5680.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    },
+    {
+      "timestamp_ms": 5720.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    },
+    {
+      "timestamp_ms": 5760.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    },
+    {
+      "timestamp_ms": 5800.0,
+      "x": 400.0,
+      "y": 450.0,
+      "easing": "ease_in_out",
+      "duration_ms": 40.0
+    }
+  ],
+  "captions": [
+    {
+      "caption_id": "cap_frame_000000",
+      "text": "Navigate to https://example.com",
+      "start_ms": 0.0,
+      "end_ms": 1500.0,
+      "position": "bottom",
+      "style": {
+        "font_size": 24,
+        "font_family": "Arial",
+        "color": "#FFFFFF",
+        "background_color": "#000000",
+        "background_opacity": 0.7,
+        "padding": 8
+      }
+    },
+    {
+      "caption_id": "cap_frame_000001",
+      "text": "Click on #search-input",
+      "start_ms": 1500.0,
+      "end_ms": 1900.0,
+      "position": "bottom",
+      "style": {
+        "font_size": 24,
+        "font_family": "Arial",
+        "color": "#FFFFFF",
+        "background_color": "#000000",
+        "background_opacity": 0.7,
+        "padding": 8
+      }
+    },
+    {
+      "caption_id": "cap_frame_000002",
+      "text": "Type \"render plan example\"",
+      "start_ms": 1900.0,
+      "end_ms": 2500.0,
+      "position": "bottom",
+      "style": {
+        "font_size": 24,
+        "font_family": "Arial",
+        "color": "#FFFFFF",
+        "background_color": "#000000",
+        "background_opacity": 0.7,
+        "padding": 8
+      }
+    },
+    {
+      "caption_id": "cap_frame_000003",
+      "text": "Press Enter",
+      "start_ms": 2500.0,
+      "end_ms": 4000.0,
+      "position": "bottom",
+      "style": {
+        "font_size": 24,
+        "font_family": "Arial",
+        "color": "#FFFFFF",
+        "background_color": "#000000",
+        "background_opacity": 0.7,
+        "padding": 8
+      }
+    },
+    {
+      "caption_id": "cap_frame_000004",
+      "text": "Page loaded: https://example.com/results?q=render+plan+example",
+      "start_ms": 4000.0,
+      "end_ms": 5500.0,
+      "position": "bottom",
+      "style": {
+        "font_size": 24,
+        "font_family": "Arial",
+        "color": "#FFFFFF",
+        "background_color": "#000000",
+        "background_opacity": 0.7,
+        "padding": 8
+      }
+    },
+    {
+      "caption_id": "cap_frame_000005",
+      "text": "Scroll down",
+      "start_ms": 4900.0,
+      "end_ms": 5400.0,
+      "position": "bottom",
+      "style": {
+        "font_size": 24,
+        "font_family": "Arial",
+        "color": "#FFFFFF",
+        "background_color": "#000000",
+        "background_opacity": 0.7,
+        "padding": 8
+      }
+    },
+    {
+      "caption_id": "cap_frame_000006",
+      "text": "Click on .result-item:first-child a",
+      "start_ms": 5400.0,
+      "end_ms": 5800.0,
+      "position": "bottom",
+      "style": {
+        "font_size": 24,
+        "font_family": "Arial",
+        "color": "#FFFFFF",
+        "background_color": "#000000",
+        "background_opacity": 0.7,
+        "padding": 8
+      }
+    },
+    {
+      "caption_id": "cap_frame_000007",
+      "text": "Hover over .result-item:first-child a",
+      "start_ms": 5800.0,
+      "end_ms": 6800.0,
+      "position": "bottom",
+      "style": {
+        "font_size": 24,
+        "font_family": "Arial",
+        "color": "#FFFFFF",
+        "background_color": "#000000",
+        "background_opacity": 0.7,
+        "padding": 8
+      }
+    },
+    {
+      "caption_id": "cap_frame_000008",
+      "text": "Screenshot captured",
+      "start_ms": 6800.0,
+      "end_ms": 7000.0,
+      "position": "bottom",
+      "style": {
+        "font_size": 24,
+        "font_family": "Arial",
+        "color": "#FFFFFF",
+        "background_color": "#000000",
+        "background_opacity": 0.7,
+        "padding": 8
+      }
+    }
+  ],
+  "transitions": [
+    {
+      "transition_id": "tr_frame_000000_frame_000001",
+      "type": "fade",
+      "start_ms": 1200.0,
+      "duration_ms": 300.0,
+      "from_frame_id": "frame_000000",
+      "to_frame_id": "frame_000001"
+    },
+    {
+      "transition_id": "tr_frame_000004_frame_000005",
+      "type": "fade",
+      "start_ms": 5200.0,
+      "duration_ms": 300.0,
+      "from_frame_id": "frame_000004",
+      "to_frame_id": "frame_000005"
+    }
+  ]
+}
