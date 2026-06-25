@@ -37,6 +37,7 @@ htmlcov/
 # Generated result files
 results/*
 !results/eval_report.txt
+/vision_agent_project/output
 
 
 # Sprint 2 RAG local artifacts
