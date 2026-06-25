@@ -1,0 +1,7 @@
+include render_plan_schema.json
+include sample_session.json
+include sample_render_plan.json
+include README.md
+include pyproject.toml
+recursive-include src *.py
+recursive-include tests *.py
