@@ -1,0 +1,62 @@
+[
+  {
+    "timestamp": 1700000000.0,
+    "action": "navigate",
+    "value": "https://example.com",
+    "screenshot": "screenshots/frame_000000.png"
+  },
+  {
+    "timestamp": 1700000001.5,
+    "action": "click",
+    "x": 640,
+    "y": 200,
+    "target": "#search-input",
+    "screenshot": "screenshots/frame_000001.png"
+  },
+  {
+    "timestamp": 1700000001.9,
+    "action": "type",
+    "value": "render plan example",
+    "target": "#search-input",
+    "screenshot": "screenshots/frame_000002.png"
+  },
+  {
+    "timestamp": 1700000002.5,
+    "action": "key_press",
+    "value": "Enter",
+    "screenshot": "screenshots/frame_000003.png"
+  },
+  {
+    "timestamp": 1700000004.0,
+    "action": "page_load",
+    "value": "https://example.com/results?q=render+plan+example",
+    "screenshot": "screenshots/frame_000004.png"
+  },
+  {
+    "timestamp": 1700000004.9,
+    "action": "scroll",
+    "deltaY": 300,
+    "screenshot": "screenshots/frame_000005.png"
+  },
+  {
+    "timestamp": 1700000005.4,
+    "action": "click",
+    "x": 400,
+    "y": 450,
+    "target": ".result-item:first-child a",
+    "screenshot": "screenshots/frame_000006.png"
+  },
+  {
+    "timestamp": 1700000005.8,
+    "action": "hover",
+    "x": 400,
+    "y": 450,
+    "target": ".result-item:first-child a",
+    "screenshot": "screenshots/frame_000007.png"
+  },
+  {
+    "timestamp": 1700000006.8,
+    "action": "screenshot",
+    "screenshot": "screenshots/frame_000008.png"
+  }
+]
