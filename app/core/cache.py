@@ -134,7 +134,15 @@ class ValkeyCacheService:
         if not self._client:
             return None
         try:
-            return await self._client.get(key)
+            value = await self._client.get(key)
+            if value is None:
+                return None
+
+            if isinstance(value, bytes):
+                return value.decode("utf-8")
+
+            return value
+
         except Exception as e:
             logger.warning("cache_get_failed", key=key, error=str(e))
             return None

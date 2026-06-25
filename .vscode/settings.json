@@ -1,6 +1,6 @@
 {
     "editor.formatOnSave": true,
-    "python.defaultInterpreterPath": "C:\\Users\\david\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe",
+    "python.defaultInterpreterPath": "C:\\Users\\david\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
     "isort.args": [
         "--settings-path=${workspaceFolder}/pyproject.toml"
     ],
@@ -41,4 +41,5 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "python-envs.defaultEnvManager": "ms-python.python:system",
 }
