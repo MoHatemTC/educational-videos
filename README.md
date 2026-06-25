@@ -172,7 +172,7 @@ Expected responsibilities:
 
 ### 2. Agent Workflow Layer
 
-The agent workflow layer coordinates multistep AI tasks.
+The agent workflow layer coordinates multi-step AI tasks.
 
 Expected responsibilities:
 
@@ -423,18 +423,6 @@ The project may involve the following technologies and concepts:
 * Docker
 * GitHub Actions
 * Programmatic video rendering
-
----
-
-## Project Status
-
-This repository is under active development as part of the Sprints AI Engineering Virtual Internship.
-
-Current focus:
-
-```text
-Building the foundation for an autonomous AI-powered educational video-generation platform.
-```
 
 ---
 
