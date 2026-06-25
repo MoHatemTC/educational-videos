@@ -47,6 +47,8 @@ dependencies = [
     "pytest>=8.3.5",
     "ruff>=0.11.4",
     "langgraph-checkpoint>=4.1.1",
+    "pillow>=12.2.0",
+    "anthropic>=0.112.0",
 ]
 
 [project.optional-dependencies]
@@ -74,6 +76,12 @@ test = ["httpx>=0.28.1", "pytest>=8.3.5"]
 
 
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests", "code_and_log/tests"]
+markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
+python_files = ["test_*.py", "*_test.py", "tests.py"]
+addopts = "--basetemp=.pytest_tmp"
 
 [tool.black]
 line-length = 119
@@ -129,13 +137,14 @@ convention = "google"
 "__init__.py" = ["E402"]
 
 [tool.pyright]
-include = ["app", "evals"]
+include = ["app", "evals", "code_and_log"]
 exclude = [
-    "**/__pycache__",
     "**/.venv",
+    "**/__pycache__",
+    ".pytest_tmp",
     "alembic/versions",
     "migrations",
-    "venv",
+    "rag-foundation/external",
 ]
 stubPath = "typings"
 pythonVersion = "3.13"

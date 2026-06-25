@@ -515,8 +515,9 @@ def test_manual_jsonl_logging_still_writes_valid_json(tmp_path: Path) -> None:
     assert event["details"] == {"ok": True}
 
 
-def test_config_loading_vision_mode(tmp_path: Path) -> None:
+def test_config_loading_vision_mode(tmp_path: Path, monkeypatch: Any) -> None:
     """Config loading parses recovery mode and vision model settings."""
+    monkeypatch.setenv("ANTHROPIC_MODEL", "claude-opus-4-8")
     config_path = tmp_path / "agent_config.yaml"
     config_path.write_text(
         """
@@ -530,7 +531,7 @@ recovery:
     - LOGIN_WALL
 vision_model:
   provider: anthropic
-  model: claude-opus-4
+  model: ${ANTHROPIC_MODEL:-claude-opus-4-8}
   require_json_plan: true
   min_confidence: 0.55
 logging:
@@ -543,7 +544,7 @@ logging:
     assert config.mode == "vision_model"
     assert config.max_consecutive_same_class_url == 2
     assert config.vision_provider == "anthropic"
-    assert config.vision_model == "claude-opus-4"
+    assert config.vision_model == "claude-opus-4-8"
     assert config.require_json_plan is True
     assert config.min_confidence == 0.55
     assert config.include_screenshot_hash is False
@@ -611,10 +612,30 @@ def test_agent_loop_calls_recovery_hook_after_observe_action(tmp_path: Path) -> 
     assert recovery_manager.calls[0]["step_id"] == "agent_step"
 
 
+def test_anthropic_client_uses_env_model(monkeypatch: Any) -> None:
+    """Anthropic client reads its model from env when no model is passed."""
+    monkeypatch.setenv("ANTHROPIC_MODEL", "claude-opus-4-8")
+    client = AnthropicVisionRecoveryClient(client=FakeAnthropicClient('{"interruption_type":"NONE"}'))
+    assert client.model == "claude-opus-4-8"
+
+
+def test_anthropic_client_requires_configured_model(monkeypatch: Any) -> None:
+    """Anthropic client fails clearly if no config/env model is available."""
+    monkeypatch.delenv("ANTHROPIC_MODEL", raising=False)
+    monkeypatch.delenv("DEFAULT_LLM_MODEL", raising=False)
+    try:
+        AnthropicVisionRecoveryClient(client=FakeAnthropicClient('{"interruption_type":"NONE"}'))
+    except RuntimeError as exc:
+        assert "ANTHROPIC_MODEL or DEFAULT_LLM_MODEL" in str(exc)
+    else:  # pragma: no cover - this branch should never run.
+        raise AssertionError("Expected missing model RuntimeError.")
+
+
 def test_unexpected_model_interruption_class_falls_back_to_none(caplog: Any) -> None:
     """Unexpected model classes warn and safely fall back to NONE."""
     client = AnthropicVisionRecoveryClient(
         client=FakeAnthropicClient('{"interruption_type":"ALIEN","confidence":0.9}'),
+        model="claude-opus-4-8",
     )
     plan_result = client.analyze_interruption(image_to_bytes(make_blank_page()))
     assert plan_result.interruption_type == InterruptionType.NONE
@@ -624,7 +645,10 @@ def test_unexpected_model_interruption_class_falls_back_to_none(caplog: Any) -> 
 
 def test_malformed_model_json_falls_back_to_none(caplog: Any) -> None:
     """Malformed model JSON warns and safely falls back to NONE."""
-    client = AnthropicVisionRecoveryClient(client=FakeAnthropicClient("not json"))
+    client = AnthropicVisionRecoveryClient(
+        client=FakeAnthropicClient("not json"),
+        model="claude-opus-4-8",
+    )
     plan_result = client.analyze_interruption(image_to_bytes(make_blank_page()))
     assert plan_result.interruption_type == InterruptionType.NONE
     assert plan_result.explanation == "Unexpected model output; falling back to NONE."
@@ -648,6 +672,7 @@ def test_invalid_action_from_model_is_ignored_or_safely_falls_back(caplog: Any) 
                 },
             ),
         ),
+        model="claude-opus-4-8",
     )
     plan_result = client.analyze_interruption(image_to_bytes(make_blank_page()))
     assert plan_result.interruption_type == InterruptionType.COOKIE_BANNER

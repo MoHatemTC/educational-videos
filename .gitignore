@@ -33,6 +33,7 @@ htmlcov/
 *.ipynb
 *.zip
 */external/
+rag-foundation\RAG-ROADMAP.md
 
 # Generated result files
 results/*
