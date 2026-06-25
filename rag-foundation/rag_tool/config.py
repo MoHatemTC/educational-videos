@@ -1,5 +1,6 @@
 """Environment-backed configuration for the RAG foundation stack."""
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Final
@@ -62,8 +63,6 @@ def get_settings() -> RagSettings:
         Validated RAG settings.
     """
     load_dotenv()
-
-    import os
 
     return RagSettings(
         embedding_provider=os.getenv(

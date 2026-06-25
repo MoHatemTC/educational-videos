@@ -1,5 +1,8 @@
 """Long-term memory service using mem0 and pgvector with optional cache layer."""
 
+from inspect import isawaitable
+from typing import Any, cast
+
 from mem0 import AsyncMemory
 
 from app.core.cache import (
@@ -13,7 +16,7 @@ from app.core.logging import logger
 class MemoryService:
     """Service for managing long-term memory using mem0 and pgvector."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the memory service."""
         self._memory: AsyncMemory | None = None
 
@@ -26,7 +29,7 @@ class MemoryService:
         memory = self._memory
 
         if memory is None:
-            memory = AsyncMemory.from_config(
+            raw_memory: Any = AsyncMemory.from_config(
                 config_dict={
                     "vector_store": {
                         "provider": "pgvector",
@@ -49,6 +52,11 @@ class MemoryService:
                     },
                 }
             )
+
+            if isawaitable(raw_memory):
+                raw_memory = await raw_memory
+
+            memory = cast(AsyncMemory, raw_memory)
             self._memory = memory
 
         return memory
@@ -56,8 +64,8 @@ class MemoryService:
     async def initialize(self) -> None:
         """Pre-warm the mem0 AsyncMemory instance and its pgvector connection pool.
 
-        Call once at startup so the first search() or add() doesn't pay the
-        ~130ms from_config + pgvector.list_cols() cold-init cost.
+        Call once at startup so the first search() or add() does not pay the
+        from_config and pgvector cold-init cost.
         """
         await self._get_memory()
         logger.info("memory_service_initialized")
@@ -65,18 +73,22 @@ class MemoryService:
     async def search(self, user_id: str | None, query: str) -> str:
         """Search relevant memories for a user.
 
-        Checks cache first; on miss, queries mem0 and caches the result.
+        Checks cache first. On miss, queries mem0 and caches the result.
 
-        Returns formatted memory string, or empty string on failure or when
-        no user_id is supplied (anonymous sessions skip long-term memory
-        rather than pooling under a shared partition).
+        Args:
+            user_id: User identifier, or None for anonymous sessions.
+            query: Search query.
+
+        Returns:
+            Formatted memory string, or an empty string on failure/no user.
         """
         if user_id is None:
             return ""
+
         try:
-            # Check cache first
             key = cache_key("memory", str(user_id), query)
             cached = await cache_service.get(key)
+
             if cached is not None:
                 logger.debug("memory_search_cache_hit", user_id=user_id)
                 return cached
@@ -85,28 +97,45 @@ class MemoryService:
             results = await memory.search(user_id=str(user_id), query=query)
             result = "\n".join([f"* {r['memory']}" for r in results["results"]])
 
-            # Cache successful results
             if result:
                 await cache_service.set(key, result)
 
             return result
-        except Exception as e:
-            logger.error("failed_to_get_relevant_memory", error=str(e), user_id=user_id, query=query)
+        except Exception as exc:
+            logger.error(
+                "failed_to_get_relevant_memory",
+                error=str(exc),
+                user_id=user_id,
+                query=query,
+            )
             return ""
 
-    async def add(self, user_id: str | None, messages: list[dict], metadata: dict | None = None) -> None:
+    async def add(
+        self,
+        user_id: str | None,
+        messages: list[dict[str, Any]],
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         """Add messages to long-term memory for a user.
 
-        No-op when ``user_id`` is ``None`` (see ``search`` for rationale).
+        Args:
+            user_id: User identifier, or None for anonymous sessions.
+            messages: Messages to store.
+            metadata: Optional metadata to attach.
         """
         if user_id is None:
             return
+
         try:
             memory = await self._get_memory()
             await memory.add(messages, user_id=str(user_id), metadata=metadata)
             logger.info("long_term_memory_updated_successfully", user_id=user_id)
-        except Exception as e:
-            logger.exception("failed_to_update_long_term_memory", user_id=user_id, error=str(e))
+        except Exception as exc:
+            logger.exception(
+                "failed_to_update_long_term_memory",
+                user_id=user_id,
+                error=str(exc),
+            )
 
 
 memory_service = MemoryService()

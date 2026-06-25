@@ -20,15 +20,9 @@ wheels/
 .env.production
 
 # Tool caches
-<<<<<<< HEAD
-.pytest_cache/
-.pytest_tmp/
-.ruff_cache/
-=======
 **/.pytest_cache/
 **/.pytest_tmp/
 **/.ruff_cache/
->>>>>>> e9085aa916f6d1f03dbc7325edda7f7d21a79f72
 .mypy_cache/
 
 # Coverage
@@ -44,8 +38,6 @@ htmlcov/
 results/*
 !results/eval_report.txt
 
-# Personal roadmap
-/rag-foundation/RAG-ROADMAP.md
 
 # Sprint 2 RAG local artifacts
 rag-foundation/.chroma/
