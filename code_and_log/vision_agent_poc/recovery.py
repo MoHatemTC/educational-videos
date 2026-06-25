@@ -6,6 +6,7 @@ import base64
 import hashlib
 import json
 import logging
+import os
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -78,7 +79,8 @@ class VisionRecoveryClient(Protocol):
         screenshot: bytes,
         context: Mapping[str, Any] | None = None,
     ) -> VisionRecoveryPlan:
-        """Analyze the observed screenshot and return a recovery plan."""
+        """Analyze a screenshot and return a safe recovery plan."""
+        raise NotImplementedError
 
 
 @dataclass
@@ -101,7 +103,7 @@ class RecoveryConfig:
     log_path: Path = Path("logs/recovery_events.jsonl")
     include_screenshot_hash: bool = True
     vision_provider: str = "anthropic"
-    vision_model: str = "claude-opus-4"
+    vision_model: str = field(default_factory=lambda: _model_from_environment(required=False))
     require_json_plan: bool = True
     min_confidence: float = 0.55
 
@@ -146,12 +148,12 @@ class AnthropicVisionRecoveryClient:
         self,
         client: Any | None = None,
         *,
-        model: str = "claude-opus-4",
+        model: str | None = None,
         recovery_wait_ms: int = 700,
         min_confidence: float = 0.55,
     ) -> None:
         """Initialize with an Anthropic client or lazily create one."""
-        self.model = model
+        self.model = model or _model_from_environment(required=True)
         self.recovery_wait_ms = recovery_wait_ms
         self.min_confidence = min_confidence
         if client is not None:
@@ -780,6 +782,40 @@ class RecoveryManager:
         self.log_event(event)
 
 
+def _model_from_environment(*, required: bool) -> str:
+    """Return the configured Anthropic model from the environment.
+
+    The recovery layer deliberately does not own a hardcoded source-code
+    model ID. In the integrated app this should come from DEFAULT_LLM_MODEL;
+    ANTHROPIC_MODEL is accepted for standalone code_and_log runs.
+    """
+    model = os.getenv("ANTHROPIC_MODEL") or os.getenv("DEFAULT_LLM_MODEL") or ""
+    if required and not model:
+        msg = (
+            "Set ANTHROPIC_MODEL or DEFAULT_LLM_MODEL to a valid Anthropic "
+            "model ID before creating AnthropicVisionRecoveryClient."
+        )
+        raise RuntimeError(msg)
+    return model
+
+
+def _resolve_env_template(value: Any) -> Any:
+    """Resolve simple ${ENV:-fallback} config values without adding dependencies."""
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    if not (stripped.startswith("${") and stripped.endswith("}")):
+        return value
+    expression = stripped[2:-1]
+    name, separator, fallback = expression.partition(":-")
+    env_value = os.getenv(name.strip())
+    if env_value:
+        return env_value
+    if separator:
+        return fallback
+    return ""
+
+
 def load_recovery_config(path: str | Path) -> RecoveryConfig:
     """Load recovery config from an agent YAML file."""
     try:
@@ -824,7 +860,7 @@ def load_recovery_config(path: str | Path) -> RecoveryConfig:
     if "provider" in vision_model:
         values["vision_provider"] = vision_model["provider"]
     if "model" in vision_model:
-        values["vision_model"] = vision_model["model"]
+        values["vision_model"] = str(_resolve_env_template(vision_model["model"]))
     if "require_json_plan" in vision_model:
         values["require_json_plan"] = bool(vision_model["require_json_plan"])
     if "min_confidence" in vision_model:

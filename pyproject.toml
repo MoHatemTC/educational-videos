@@ -40,6 +40,8 @@ dependencies = [
     "uvloop>=0.22.1; platform_system != 'Windows'",
     "asgi-correlation-id>=4.3.4",
     "alembic>=1.18.4",
+    "pillow>=12.2.0",
+    "anthropic>=0.112.0",
 ]
 
 [project.optional-dependencies]
@@ -126,7 +128,7 @@ convention = "google"
 "__init__.py" = ["E402"]
 
 [tool.pyright]
-include = ["app", "evals"]
+include = ["app", "evals", "code_and_log"]
 exclude = [
     "**/__pycache__",
     "**/.venv",
