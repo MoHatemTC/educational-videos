@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 from typing import Any
+from typing_extensions import override
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from pydantic import ValidationError
@@ -27,6 +28,7 @@ from rag_tool.schema import RetrievalQuery
 class FakeEmbeddings(Embeddings):
     """Small deterministic embedding function for fast local tests."""
 
+    @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed documents with simple keyword features.
 
@@ -38,6 +40,7 @@ class FakeEmbeddings(Embeddings):
         """
         return [self.embed_query(text) for text in texts]
 
+    @override
     def embed_query(self, text: str) -> list[float]:
         """Embed a query with simple keyword features.
 
@@ -288,7 +291,9 @@ def test_prepare_tool_input_node_uses_metadata_contract() -> None:
         }
     )
 
-    assert state["tool_input"] == {
+    tool_input = state.get("tool_input")
+
+    assert tool_input == {
         "query": "vector search",
         "source": "qdrant",
         "version": "master",
@@ -314,7 +319,10 @@ def test_prepare_context_node_formats_citations() -> None:
         }
     )
 
-    assert "Citation: [qdrant/master/md] intro.md#chunk-0" in state["answer_context"]
+    answer_context = state.get("answer_context")
+
+    assert isinstance(answer_context, str)
+    assert "Citation: [qdrant/master/md] intro.md#chunk-0" in answer_context
 
 
 def test_vector_store_upsert_uses_mocked_collection_client(

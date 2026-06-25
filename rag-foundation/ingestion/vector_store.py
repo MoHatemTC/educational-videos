@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Final
 
 import chromadb
+from chromadb.api import ClientAPI
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
@@ -69,9 +70,7 @@ def resolve_collection_name(collection_name: str | None = None) -> str:
     return resolved_name
 
 
-def create_chroma_client(
-    persist_dir: str | Path | None = None,
-) -> chromadb.PersistentClient:
+def create_chroma_client(persist_dir: str | Path | None = None) -> ClientAPI:
     """Create a persistent ChromaDB client.
 
     Args:

@@ -1657,18 +1657,15 @@ dependencies = [
     { name = "asgi-correlation-id" },
     { name = "asgiref" },
     { name = "bcrypt" },
-    { name = "chromadb" },
     { name = "colorama" },
     { name = "ddgs" },
     { name = "duckduckgo-search" },
     { name = "email-validator" },
     { name = "fastapi" },
     { name = "langchain" },
-    { name = "langchain-chroma" },
     { name = "langchain-community" },
     { name = "langchain-core" },
     { name = "langchain-openai" },
-    { name = "langchain-text-splitters" },
     { name = "langfuse" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint" },
@@ -1681,12 +1678,9 @@ dependencies = [
     { name = "psycopg2-binary" },
     { name = "pydantic", extra = ["email"] },
     { name = "pydantic-settings" },
-    { name = "pytest" },
     { name = "python-dotenv" },
     { name = "python-jose", extra = ["cryptography"] },
     { name = "python-multipart" },
-    { name = "ruff" },
-    { name = "sentence-transformers" },
     { name = "slowapi" },
     { name = "sqlmodel" },
     { name = "starlette-prometheus" },
@@ -1711,6 +1705,12 @@ dev = [
     { name = "pyinstrument" },
     { name = "ruff" },
 ]
+rag = [
+    { name = "chromadb" },
+    { name = "langchain-chroma" },
+    { name = "langchain-text-splitters" },
+    { name = "sentence-transformers" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -1722,6 +1722,7 @@ dev = [
 test = [
     { name = "httpx" },
     { name = "pytest" },
+    { name = "pytest-mock" },
 ]
 
 [package.metadata]
@@ -1732,7 +1733,7 @@ requires-dist = [
     { name = "asgiref", specifier = ">=3.8.1" },
     { name = "bcrypt", specifier = ">=4.3.0" },
     { name = "black", marker = "extra == 'dev'" },
-    { name = "chromadb", specifier = ">=1.5.9" },
+    { name = "chromadb", marker = "extra == 'rag'", specifier = ">=1.5.9" },
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "ddgs", specifier = ">=9.6.0" },
     { name = "djlint", marker = "extra == 'dev'", specifier = "==1.36.4" },
@@ -1742,11 +1743,11 @@ requires-dist = [
     { name = "flake8", marker = "extra == 'dev'" },
     { name = "isort", marker = "extra == 'dev'" },
     { name = "langchain", specifier = ">=1.0.5" },
-    { name = "langchain-chroma", specifier = ">=1.1.0" },
+    { name = "langchain-chroma", marker = "extra == 'rag'", specifier = ">=1.1.0" },
     { name = "langchain-community", specifier = ">=0.4.1" },
     { name = "langchain-core", specifier = ">=1.0.4" },
     { name = "langchain-openai", specifier = ">=1.0.2" },
-    { name = "langchain-text-splitters", specifier = ">=1.0.0" },
+    { name = "langchain-text-splitters", marker = "extra == 'rag'", specifier = ">=1.0.0" },
     { name = "langfuse", specifier = "==3.9.1" },
     { name = "langgraph", specifier = ">=1.0.2" },
     { name = "langgraph-checkpoint", specifier = ">=4.1.1" },
@@ -1760,14 +1761,12 @@ requires-dist = [
     { name = "pydantic", extras = ["email"], specifier = ">=2" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
     { name = "pyinstrument", marker = "extra == 'dev'", specifier = ">=5.1.2" },
-    { name = "pytest", specifier = ">=8.3.5" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.4.0" },
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "redis", marker = "extra == 'cache'", specifier = ">=7.4.0" },
-    { name = "ruff", specifier = ">=0.11.4" },
     { name = "ruff", marker = "extra == 'dev'" },
-    { name = "sentence-transformers", specifier = ">=5.5.1" },
+    { name = "sentence-transformers", marker = "extra == 'rag'", specifier = ">=5.5.1" },
     { name = "slowapi", specifier = ">=0.1.9" },
     { name = "sqlmodel", specifier = ">=0.0.25" },
     { name = "starlette-prometheus", specifier = ">=0.7.0" },
@@ -1779,7 +1778,7 @@ requires-dist = [
     { name = "uvloop", marker = "sys_platform != 'win32'", specifier = ">=0.22.1" },
     { name = "valkey", extras = ["libvalkey"], marker = "extra == 'cache'", specifier = ">=6.1.0" },
 ]
-provides-extras = ["dev", "cache"]
+provides-extras = ["dev", "cache", "rag"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1791,6 +1790,7 @@ dev = [
 test = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest", specifier = ">=8.3.5" },
+    { name = "pytest-mock", specifier = ">=3.14.0" },
 ]
 
 [[package]]
@@ -3387,6 +3387,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e4/47/b9efed96c114afcfa3c9d3fe98a76a1d14c74a9e266d397cf6eb64be5e01/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/24/25/1de2678b631f5a49215c6c96fff41ba892b0a34df68d6d80292b1b48aa7f/pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c", size = 386536, upload-time = "2026-06-19T10:58:31.347Z" },
+]
+
+[[package]]
+name = "pytest-mock"
+version = "3.15.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/68/14/eb014d26be205d38ad5ad20d9a80f7d201472e08167f0bb4361e251084a9/pytest_mock-3.15.1.tar.gz", hash = "sha256:1849a238f6f396da19762269de72cb1814ab44416fa73a8686deac10b0d87a0f", size = 34036, upload-time = "2025-09-16T16:37:27.081Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/cc/06253936f4a7fa2e0f48dfe6d851d9c56df896a9ab09ac019d70b760619c/pytest_mock-3.15.1-py3-none-any.whl", hash = "sha256:0a25e2eb88fe5168d535041d09a4529a188176ae608a6d249ee65abc0949630d", size = 10095, upload-time = "2025-09-16T16:37:25.734Z" },
 ]
 
 [[package]]
