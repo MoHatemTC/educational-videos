@@ -1,0 +1,38 @@
+"""Script agent — writes the spoken narration synced to the code.
+
+Supports English and Egyptian-Arabic narration. For Arabic, technical terms stay
+in English (per the project's dialect requirement) so TTS pronounces code
+identifiers correctly.
+"""
+
+from app.services.pipeline.llm import PipelineLLM
+
+_SYSTEM = (
+    "You are a scriptwriter for short educational coding videos. The narration is read aloud as a "
+    "voiceover synced to code being typed and run on screen."
+)
+
+
+def _language_rule(language: str) -> str:
+    """Return the narration-language instruction for the prompt."""
+    if language == "egyptian_arabic":
+        return (
+            "Write the narration in Egyptian Arabic dialect (العامية المصرية). "
+            "Keep ALL technical terms — keywords, function names, library names, and code — in English, "
+            "written in Latin script. Do NOT transliterate technical terms into Arabic letters."
+        )
+    return "Write the narration in clear, friendly English."
+
+
+def generate_script(llm: PipelineLLM, topic: str, research_notes: str, code: str, language: str = "en") -> str:
+    """Return a 120-200 word spoken narration that walks through the code."""
+    user = (
+        f"Topic: {topic}\n\n"
+        f"Key teaching points:\n{research_notes}\n\n"
+        f"The on-screen code is:\n```python\n{code}\n```\n\n"
+        "Write a spoken narration (120-200 words) that walks the viewer through typing and running this "
+        "code, explaining what each part does and what the output means. "
+        f"{_language_rule(language)} "
+        "Return only the narration text — no headings, no stage directions, no markdown."
+    )
+    return llm.complete(stage="script", system=_SYSTEM, user=user)

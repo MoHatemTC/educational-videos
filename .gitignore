@@ -8,7 +8,7 @@ wheels/
 *.jsonl
 
 # Virtual environments
-.venv/
+*venv/
 
 # IDE files
 .idea/
@@ -37,3 +37,7 @@ htmlcov/
 # Generated result files
 results/*
 !results/eval_report.txt
+
+# MVP runtime artifacts
+data/
+output/

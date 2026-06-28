@@ -40,6 +40,14 @@ dependencies = [
     "uvloop>=0.22.1; platform_system != 'Windows'",
     "asgi-correlation-id>=4.3.4",
     "alembic>=1.18.4",
+    # ── Educational-Video MVP additions ──
+    "openai>=1.54.0",
+    "qdrant-client[fastembed]>=1.12.0",
+    "mutagen>=1.47.0",
+    "httpx>=0.28.1",
+    "streamlit>=1.40.0",
+    "Pillow>=10.0.0",
+    "playwright>=1.44,<2.0",
 ]
 
 [project.optional-dependencies]

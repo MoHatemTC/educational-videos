@@ -1,4 +1,5 @@
-"""LLM model registry with pre-initialized instances."""
+"""LLM model registry — all models routed through the LiteLLM proxy.
+"""
 
 from typing import (
     Any,
@@ -10,113 +11,80 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
-from app.core.config import (
-    Environment,
-    settings,
-)
+from app.core.config import settings
 from app.core.logging import logger
 
-_TOKEN_LIMIT: Dict[str, Any] = {"max_completion_tokens": settings.MAX_TOKENS}
-_API_KEY = SecretStr(settings.OPENAI_API_KEY)
+_API_KEY = SecretStr(settings.LITELLM_API_KEY or "litellm")
+_BASE_URL = settings.LITELLM_BASE_URL
+_MODEL = settings.LITELLM_MODEL
+
+
+def _make_kimi(**overrides: Any) -> ChatOpenAI:
+    """Build a ChatOpenAI bound to the LiteLLM proxy (Kimi K2.6).
+
+    Args:
+        **overrides: Per-call parameter overrides (e.g. temperature).
+
+    Returns:
+        A configured ``ChatOpenAI`` talking to the LiteLLM proxy.
+    """
+    params: Dict[str, Any] = {
+        "model": _MODEL,
+        "api_key": _API_KEY,
+        "base_url": _BASE_URL,
+        "temperature": settings.LLM_TEMPERATURE,
+        "max_tokens": settings.LLM_MAX_TOKENS,
+    }
+    params.update(overrides)
+    return ChatOpenAI(**params)
 
 
 class LLMRegistry:
-    """Registry of available LLM models with pre-initialized instances.
+    """Registry of available LLM models (single LiteLLM/Kimi backend).
 
-    This class maintains a list of LLM configurations and provides
-    methods to retrieve them by name with optional argument overrides.
+    Kept as a registry (rather than a single instance) so the circular-fallback
+    ``LLMService`` keeps working unchanged; with one backend it simply retries
+    the same proxy model.
     """
 
     LLMS: List[Dict[str, Any]] = [
-        {
-            "name": "gpt-5-mini",
-            "llm": ChatOpenAI(
-                model="gpt-5-mini",
-                api_key=_API_KEY,
-                model_kwargs=_TOKEN_LIMIT,
-                reasoning={"effort": "low"},
-            ),
-        },
-        {
-            "name": "gpt-5.4",
-            "llm": ChatOpenAI(
-                model="gpt-5",
-                api_key=_API_KEY,
-                model_kwargs=_TOKEN_LIMIT,
-                reasoning={"effort": "medium"},
-            ),
-        },
-        {
-            "name": "gpt-5.4-nano",
-            "llm": ChatOpenAI(
-                model="gpt-5.4-nano",
-                api_key=_API_KEY,
-                model_kwargs=_TOKEN_LIMIT,
-                reasoning={"effort": "low"},
-            ),
-        },
-        {
-            "name": "gpt-5",
-            "llm": ChatOpenAI(
-                model="gpt-5",
-                api_key=_API_KEY,
-                model_kwargs=_TOKEN_LIMIT,
-                top_p=0.95 if settings.ENVIRONMENT == Environment.PRODUCTION else 0.8,
-                presence_penalty=0.1 if settings.ENVIRONMENT == Environment.PRODUCTION else 0.0,
-                frequency_penalty=0.1 if settings.ENVIRONMENT == Environment.PRODUCTION else 0.0,
-            ),
-        },
+        {"name": _MODEL, "llm": _make_kimi()},
     ]
 
     @classmethod
     def get(cls, model_name: str, **kwargs) -> BaseChatModel:
-        """Get an LLM by name with optional argument overrides.
-
-        When kwargs are provided a fresh ChatOpenAI instance is returned with
-        those overrides applied, leaving the shared registry entry untouched.
+        """Get an LLM by name, falling back to the Kimi backend if unknown.
 
         Args:
-            model_name: Name of the model to retrieve.
-            **kwargs: Optional arguments to override default model configuration.
+            model_name: Requested model name. Unknown names resolve to Kimi
+                (single-provider setup), so callers configured for the old
+                gpt-5* names keep working.
+            **kwargs: Optional per-call overrides; when present a fresh instance
+                is returned, leaving the shared registry entry untouched.
 
         Returns:
-            BaseChatModel instance.
-
-        Raises:
-            ValueError: If model_name is not found in LLMS.
+            A ``BaseChatModel`` instance routed through the LiteLLM proxy.
         """
         model_entry = next((e for e in cls.LLMS if e["name"] == model_name), None)
 
-        if not model_entry:
-            available = ", ".join(e["name"] for e in cls.LLMS)
-            raise ValueError(f"model '{model_name}' not found in registry. available models: {available}")
+        if model_entry is None:
+            logger.debug("llm_model_not_registered_using_kimi", requested=model_name)
+            return _make_kimi(**kwargs) if kwargs else cls.LLMS[0]["llm"]
 
         if kwargs:
             logger.debug("creating_llm_with_custom_args", model_name=model_name, custom_args=list(kwargs.keys()))
-            return ChatOpenAI(model=model_name, api_key=_API_KEY, **kwargs)
+            return _make_kimi(**kwargs)
 
-        logger.debug("using_default_llm_instance", model_name=model_name)
         return model_entry["llm"]
 
     @classmethod
     def get_all_names(cls) -> List[str]:
-        """Return all registered model names in order.
-
-        Returns:
-            List of model name strings.
-        """
+        """Return all registered model names in order."""
         return [e["name"] for e in cls.LLMS]
 
     @classmethod
     def get_model_at_index(cls, index: int) -> Dict[str, Any]:
-        """Return the model entry at a specific index, wrapping to 0 if out of range.
-
-        Args:
-            index: Index into LLMS.
-
-        Returns:
-            Model entry dict.
-        """
+        """Return the model entry at an index, wrapping to 0 if out of range."""
         if 0 <= index < len(cls.LLMS):
             return cls.LLMS[index]
         return cls.LLMS[0]

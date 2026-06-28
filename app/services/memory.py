@@ -19,7 +19,7 @@ class MemoryService:
 
     async def _get_memory(self) -> AsyncMemory:
         if self._memory is None:
-            self._memory = await AsyncMemory.from_config(
+            self._memory = AsyncMemory.from_config(
                 config_dict={
                     "vector_store": {
                         "provider": "pgvector",
@@ -34,11 +34,19 @@ class MemoryService:
                     },
                     "llm": {
                         "provider": "openai",
-                        "config": {"model": settings.LONG_TERM_MEMORY_MODEL},
+                        "config": {
+                            "model": settings.LITELLM_MODEL,
+                            "api_key": settings.LITELLM_API_KEY,
+                            "openai_base_url": settings.LITELLM_BASE_URL,
+                        },
                     },
                     "embedder": {
                         "provider": "openai",
-                        "config": {"model": settings.LONG_TERM_MEMORY_EMBEDDER_MODEL},
+                        "config": {
+                            "model": settings.LONG_TERM_MEMORY_EMBEDDER_MODEL,
+                            "api_key": settings.LITELLM_API_KEY,
+                            "openai_base_url": settings.LITELLM_BASE_URL,
+                        },
                     },
                 }
             )

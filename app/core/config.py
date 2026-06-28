@@ -146,8 +146,8 @@ class Settings:
         self.LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 
         # LangGraph Configuration
-        self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-        self.DEFAULT_LLM_MODEL = os.getenv("DEFAULT_LLM_MODEL", "gpt-5-mini")
+        self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("LITELLM_API_KEY", "")
+        self.DEFAULT_LLM_MODEL = os.getenv("DEFAULT_LLM_MODEL") or os.getenv("DEFAULT_MODEL", "FW-Kimi-K2.6")
         self.SESSION_NAMING_ENABLED = os.getenv("SESSION_NAMING_ENABLED", "true").lower() == "true"
         self.DEFAULT_LLM_TEMPERATURE = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.2"))
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
@@ -202,6 +202,8 @@ class Settings:
             "login": ["20 per minute"],
             "root": ["10 per minute"],
             "health": ["20 per minute"],
+            "videos": ["60 per minute"],
+            "rag": ["60 per minute"],
         }
 
         # Update rate limit endpoints from environment variables
@@ -217,6 +219,38 @@ class Settings:
         self.EVALUATION_BASE_URL = os.getenv("EVALUATION_BASE_URL", "https://api.openai.com/v1")
         self.EVALUATION_API_KEY = os.getenv("EVALUATION_API_KEY", self.OPENAI_API_KEY)
         self.EVALUATION_SLEEP_TIME = int(os.getenv("EVALUATION_SLEEP_TIME", "10"))
+
+        # ── Educational-Video MVP configuration ──────────────────────────────
+        # LLM: Kimi K2.6 via the LiteLLM proxy (OpenAI-compatible).
+        # NOTE: app/core/llm_client.py reads LITELLM_* / DEFAULT_MODEL directly
+        # from the environment; these mirror them for code that needs settings.
+        self.LITELLM_BASE_URL = os.getenv("LITELLM_BASE_URL", "")
+        self.LITELLM_API_KEY = os.getenv("LITELLM_API_KEY", "")
+        self.LITELLM_MODEL = os.getenv("DEFAULT_MODEL", "FW-Kimi-K2.6")
+        # Kimi is a reasoning model — give the visible answer plenty of headroom.
+        self.LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "8000"))
+        self.LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+        # Per-million-token prices for the cost estimate (USD, labelled "estimated"
+        # everywhere). Defaults approximate Kimi K2; override via env if needed.
+        self.LLM_PRICE_INPUT_PER_M = float(os.getenv("LLM_PRICE_INPUT_PER_M", "0.60"))
+        self.LLM_PRICE_OUTPUT_PER_M = float(os.getenv("LLM_PRICE_OUTPUT_PER_M", "2.50"))
+
+        # TTS: ElevenLabs
+        self.ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+        self.ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "Xb7hH8MSUJpSbSDYk0k2")
+        self.ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2")
+
+        # Vector DB: Qdrant Cloud + FastEmbed (ONNX) embeddings
+        self.QDRANT_URL = os.getenv("QDRANT_URL", "")
+        self.QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
+        self.QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "edu_docs")
+        self.EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+        self.EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))
+
+        # Pipeline storage / outputs (job state, audio, rendered video)
+        self.VIDEO_DATA_DIR = Path(os.getenv("VIDEO_DATA_DIR", "./data"))
+        self.VIDEO_OUTPUT_DIR = Path(os.getenv("VIDEO_OUTPUT_DIR", "./output"))
+        self.CHECKPOINT_DB_PATH = os.getenv("CHECKPOINT_DB_PATH", "./data/jobs.db")
 
         # Apply environment-specific settings
         self.apply_environment_settings()

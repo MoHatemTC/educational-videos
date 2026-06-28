@@ -12,12 +12,21 @@ ENV APP_ENV=${APP_ENV} \
     PYTHONHASHSEED=random \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100
+    PIP_DEFAULT_TIMEOUT=100 \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 
 # Install system dependencies
+#  - ffmpeg: programmatic video render + audio duration probing (ffprobe)
+#  - fonts-dejavu-core: monospace font for code-typing frames
+#  - libgomp1: required by onnxruntime (FastEmbed embeddings)
+#  - curl: container healthcheck
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
+    ffmpeg \
+    fonts-dejavu-core \
+    libgomp1 \
+    curl \
     && pip install --upgrade pip \
     && pip install uv \
     && rm -rf /var/lib/apt/lists/*
@@ -25,6 +34,14 @@ RUN apt-get update && apt-get install -y \
 # Copy pyproject.toml first to leverage Docker cache
 COPY pyproject.toml .
 RUN uv venv && . .venv/bin/activate && uv pip install -e .
+
+# Install Playwright's own Chromium + OS libs (web-explainer mode). Downstream of
+# dep install so it only re-runs on a playwright bump. World-readable so the
+# non-root appuser can launch it.
+RUN . .venv/bin/activate \
+    && playwright install --with-deps chromium \
+    && chmod -R a+rx /opt/ms-playwright \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy the application
 COPY . .
