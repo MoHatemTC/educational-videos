@@ -17,6 +17,7 @@ from pathlib import Path
 from app.core.config import settings
 from app.core.llm_client import LLMClient
 from app.core.logging import logger
+from app.core.observability import langfuse_trace
 from app.core.prompt_chain import convert_script_to_timeline
 from app.models.video_job import VideoJob
 from app.services.pipeline.agents import generate_code, generate_script, research_topic
@@ -26,7 +27,7 @@ from app.services.pipeline.render.frames import render_frames
 from app.services.pipeline.render.screenshot_video import render_screenshot_video
 from app.services.pipeline.sandbox import self_heal_code
 from app.services.pipeline.tts.audio import duration_seconds
-from app.services.pipeline.tts.elevenlabs import synthesize
+from app.services.pipeline.tts.elevenlabs import synthesize, voice_id_for_language
 from app.services.pipeline.vision import capture_page, describe_screenshots, generate_web_script
 from app.services.video_store import video_store
 
@@ -43,16 +44,38 @@ def run_generation(job_id: str) -> None:
         logger.error("pipeline_generation_missing_job", job_id=job_id)
         return
 
-    try:
-        llm = PipelineLLM(job_id=job_id)
-        if job.mode == "web_explainer":
-            _generate_web_explainer(job_id, job, llm)
-        else:
-            _generate_code_tutorial(job_id, job, llm)
-        logger.info("pipeline_generation_paused_for_review", job_id=job_id, mode=job.mode)
-    except Exception as exc:  # noqa: BLE001 - background task must not crash silently
-        logger.exception("pipeline_generation_failed", job_id=job_id, error=str(exc))
-        video_store.update_job(job_id, status="error", current_step="error", error_message=str(exc))
+    with langfuse_trace(
+        name="video.generation",
+        as_type="agent",
+        input_data={
+            "job_id": job_id,
+            "mode": job.mode,
+            "topic": job.topic,
+            "language": job.language,
+            "url": job.url,
+        },
+        metadata={
+            "job_id": job_id,
+            "mode": job.mode,
+            "environment": settings.ENVIRONMENT.value,
+        },
+        session_id=job_id,
+        tags=["video-pipeline", "generation", job.mode, settings.ENVIRONMENT.value],
+    ) as trace:
+        try:
+            llm = PipelineLLM(job_id=job_id)
+            if job.mode == "web_explainer":
+                _generate_web_explainer(job_id, job, llm)
+            else:
+                _generate_code_tutorial(job_id, job, llm)
+            if trace is not None:
+                trace.update(output={"status": "awaiting_approval"})
+            logger.info("pipeline_generation_paused_for_review", job_id=job_id, mode=job.mode)
+        except Exception as exc:  # noqa: BLE001 - background task must not crash silently
+            if trace is not None:
+                trace.update(output={"status": "error", "error": str(exc)})
+            logger.exception("pipeline_generation_failed", job_id=job_id, error=str(exc))
+            video_store.update_job(job_id, status="error", current_step="error", error_message=str(exc))
 
 
 def _generate_code_tutorial(job_id: str, job: VideoJob, llm: PipelineLLM) -> None:
@@ -129,27 +152,59 @@ def run_render(job_id: str) -> None:
         logger.error("pipeline_render_missing_job", job_id=job_id)
         return
 
-    if job.review_status != "approved":
-        logger.error("pipeline_render_not_approved", job_id=job_id, review_status=job.review_status)
-        video_store.update_job(job_id, status="error", current_step="error", error_message="render requires approval")
-        return
+    with langfuse_trace(
+        name="video.render",
+        as_type="chain",
+        input_data={"job_id": job_id, "mode": job.mode, "review_status": job.review_status},
+        metadata={"job_id": job_id, "mode": job.mode, "environment": settings.ENVIRONMENT.value},
+        session_id=job_id,
+        tags=["video-pipeline", "render", job.mode, settings.ENVIRONMENT.value],
+    ) as trace:
+        if job.review_status != "approved":
+            logger.error("pipeline_render_not_approved", job_id=job_id, review_status=job.review_status)
+            video_store.update_job(
+                job_id, status="error", current_step="error", error_message="render requires approval"
+            )
+            if trace is not None:
+                trace.update(output={"status": "error", "error": "render requires approval"})
+            return
 
-    try:
-        if job.mode == "web_explainer":
-            _render_web_explainer(job_id, job)
-        else:
-            _render_code_tutorial(job_id, job)
-        logger.info("pipeline_render_done", job_id=job_id, mode=job.mode)
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("pipeline_render_failed", job_id=job_id, error=str(exc))
-        video_store.update_job(job_id, status="error", current_step="error", error_message=str(exc))
+        try:
+            if job.mode == "web_explainer":
+                _render_web_explainer(job_id, job)
+            else:
+                _render_code_tutorial(job_id, job)
+            if trace is not None:
+                trace.update(output={"status": "done"})
+            logger.info("pipeline_render_done", job_id=job_id, mode=job.mode)
+        except Exception as exc:  # noqa: BLE001
+            if trace is not None:
+                trace.update(output={"status": "error", "error": str(exc)})
+            logger.exception("pipeline_render_failed", job_id=job_id, error=str(exc))
+            video_store.update_job(job_id, status="error", current_step="error", error_message=str(exc))
 
 
-def _synthesize_and_measure(job_id: str, script: str) -> tuple[str, float]:
+def _synthesize_and_measure(job_id: str, script: str, language: str) -> tuple[str, float]:
     """Synthesize narration and return (audio_path, clamped_duration)."""
     video_store.update_job(job_id, status="rendering", current_step="tts", awaiting_approval=False)
-    audio_path = synthesize(script)
-    duration = max(3.0, min(duration_seconds(audio_path), _MAX_RENDER_SECONDS))
+    with langfuse_trace(
+        name="video.tts",
+        as_type="tool",
+        input_data={"job_id": job_id, "characters": len(script)},
+        metadata={
+            "job_id": job_id,
+            "provider": "elevenlabs",
+            "language": language,
+            "voice_id": voice_id_for_language(language),
+            "environment": settings.ENVIRONMENT.value,
+        },
+        session_id=job_id,
+        tags=["video-pipeline", "tts", settings.ENVIRONMENT.value],
+    ) as trace:
+        audio_path = synthesize(script, voice_id=voice_id_for_language(language))
+        duration = max(3.0, min(duration_seconds(audio_path), _MAX_RENDER_SECONDS))
+        if trace is not None:
+            trace.update(output={"audio_path": str(audio_path), "duration_s": round(duration, 2)})
     video_store.update_job(
         job_id,
         current_step="render",
@@ -164,7 +219,7 @@ def _render_code_tutorial(job_id: str, job: VideoJob) -> None:
     script = (artifacts.get("script") or job.topic).strip()
     code = (artifacts.get("code") or "# no code").strip()
 
-    audio_path, duration = _synthesize_and_measure(job_id, script)
+    audio_path, duration = _synthesize_and_measure(job_id, script, job.language)
     frames_dir = Path(tempfile.gettempdir()) / "render" / job_id / "frames"
     try:
         if frames_dir.exists():
@@ -187,7 +242,7 @@ def _render_web_explainer(job_id: str, job: VideoJob) -> None:
     if not screenshots:
         raise RuntimeError("no screenshots available to render")
 
-    audio_path, duration = _synthesize_and_measure(job_id, script)
+    audio_path, duration = _synthesize_and_measure(job_id, script, job.language)
     video_path = Path(settings.VIDEO_OUTPUT_DIR) / job_id / "final.mp4"
     render_screenshot_video(screenshots, audio_path, str(video_path), duration)
     video_store.update_job(job_id, status="done", current_step="done", artifacts_merge={"video_path": str(video_path)})

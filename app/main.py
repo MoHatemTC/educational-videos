@@ -29,7 +29,7 @@ from app.core.middleware import (
     MetricsMiddleware,
     ProfilingMiddleware,
 )
-from app.core.observability import langfuse_init
+from app.core.observability import flush_langfuse, langfuse_init
 from app.services.video_store import video_store
 
 # Load environment variables
@@ -102,6 +102,7 @@ async def lifespan(app: FastAPI):
     if connection_pool is not None:
         await connection_pool.close()
         logger.info("connection_pool_closed")
+    flush_langfuse()
     logger.info("application_shutdown")
 
 

@@ -63,5 +63,7 @@ rag-foundation/.cache/
 
 # Local pytest temp files
 rag-foundation/.pytest_tmp/
-# Local pytest temp files
-rag-foundation/.pytest_tmp/
+
+# files that reference API KEY
+scripts/find_usable_arabic_voices.py
+scripts/test_voice.py

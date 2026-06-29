@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import Any, cast
 
-from openai import OpenAI
+from app.core.traced_openai import create_openai_client
 from openai.types.chat import ChatCompletionMessageParam
 
 from app.core.config import settings
@@ -26,7 +26,7 @@ _SYSTEM = (
 
 def describe_screenshots(screenshots: list[str], url: str, job_id: str | None = None) -> str:
     """Return a factual, ordered description of the page from its screenshot(s)."""
-    client = OpenAI(base_url=settings.LITELLM_BASE_URL, api_key=settings.LITELLM_API_KEY)
+    client = create_openai_client(base_url=settings.LITELLM_BASE_URL, api_key=settings.LITELLM_API_KEY)
 
     content: list[dict[str, Any]] = [
         {"type": "text", "text": f"Page URL: {url}\nDescribe this page section by section, top to bottom."}
@@ -40,12 +40,23 @@ def describe_screenshots(screenshots: list[str], url: str, job_id: str | None = 
         list[ChatCompletionMessageParam],
         [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": content}],
     )
-    resp = client.chat.completions.create(
-        model=settings.LITELLM_MODEL,
-        temperature=0.0,
-        max_tokens=1500,
-        messages=messages,
-    )
+    request_kwargs: dict[str, Any] = {
+        "model": settings.LITELLM_MODEL,
+        "temperature": 0.0,
+        "max_tokens": 1500,
+        "messages": messages,
+        "name": "video_pipeline.vision_describe",
+        "metadata": {
+            "url": url,
+            "screenshots": len(screenshots),
+            "langfuse_tags": ["video-pipeline", "vision", settings.ENVIRONMENT.value],
+        },
+    }
+    if job_id:
+        request_kwargs["metadata"]["job_id"] = job_id
+        request_kwargs["metadata"]["langfuse_session_id"] = job_id
+
+    resp = client.chat.completions.create(**request_kwargs)
     latency_ms = int((time.monotonic() - started) * 1000)
 
     usage = getattr(resp, "usage", None)

@@ -2,8 +2,19 @@
 
 import subprocess
 from pathlib import Path
+from typing import Any, cast
 
 from app.core.logging import logger
+
+
+def _ffmpeg_executable() -> str:
+    """Return a usable FFmpeg executable path."""
+    try:
+        module = cast(Any, __import__("imageio_ffmpeg", fromlist=["get_ffmpeg_exe"]))
+        return str(module.get_ffmpeg_exe())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("bundled_ffmpeg_unavailable", error=str(exc))
+        return "ffmpeg"
 
 
 def assemble_video(frames_dir: str | Path, fps: int, audio_path: str | Path, output_path: str | Path) -> Path:
@@ -25,7 +36,7 @@ def assemble_video(frames_dir: str | Path, fps: int, audio_path: str | Path, out
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     cmd = [
-        "ffmpeg",
+        _ffmpeg_executable(),
         "-y",
         "-framerate",
         str(fps),

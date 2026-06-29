@@ -40,7 +40,6 @@ dependencies = [
     "uvloop>=0.22.1; platform_system != 'Windows'",
     "asgi-correlation-id>=4.3.4",
     "alembic>=1.18.4",
-    
     # ── Educational-Video MVP additions ──
     "openai>=1.54.0",
     "qdrant-client[fastembed]>=1.12.0",
@@ -49,10 +48,11 @@ dependencies = [
     "streamlit>=1.40.0",
     "pillow>=12.2.0",
     "playwright>=1.44,<2.0",
-
     # ── Mentor/dev branch additions ──
     "langgraph-checkpoint>=4.1.1",
     "anthropic>=0.112.0",
+    "imageio-ffmpeg>=0.6.0",
+    "elevenlabs>=2.54.0",
 ]
 
 [project.optional-dependencies]

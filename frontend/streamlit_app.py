@@ -37,7 +37,7 @@ with st.sidebar:
             url = None
             topic = st.text_input("Topic", placeholder="e.g. Python list comprehensions")
         language = st.selectbox("Narration language", list(_LANG_LABELS), format_func=_LANG_LABELS.get)
-        submitted = st.form_submit_button("Generate", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Generate", type="primary", width="stretch")
     if submitted:
         title = (topic or "").strip() or (url or "").strip()
         if mode == "web_explainer" and not (url or "").strip():
@@ -64,7 +64,7 @@ with st.sidebar:
         st.warning(f"Backend not reachable:\n{exc}")
     for j in jobs:
         icon = {"done": "✅", "error": "❌", "awaiting_approval": "⏸️", "rejected": "🚫"}.get(j["status"], "⏳")
-        if st.button(f"{icon} {j['topic'][:28]}", key=f"job_{j['job_id']}", use_container_width=True):
+        if st.button(f"{icon} {j['topic'][:28]}", key=f"job_{j['job_id']}", width="stretch"):
             st.session_state.job_id = j["job_id"]
             st.rerun()
 
@@ -120,7 +120,7 @@ if status["awaiting_approval"]:
         if is_web:
             shots = review.get("screenshots") or []
             if shots:
-                st.image(shots[0], caption="Captured page", use_container_width=True)
+                st.image(shots[0], caption="Captured page", width="stretch")
             with st.expander("Page description (Kimi vision)"):
                 st.write(review.get("research") or "")
             code = None
@@ -129,10 +129,10 @@ if status["awaiting_approval"]:
             timeline = review.get("timeline") or {}
             st.caption(f"Structured timeline: {len(timeline.get('events', []))} events")
     a, b = st.columns(2)
-    if a.button("✅ Approve & render", type="primary", use_container_width=True):
+    if a.button("✅ Approve & render", type="primary", width="stretch"):
         api.approve(job_id, script=script, code=code)
         st.rerun()
-    if b.button("❌ Reject", use_container_width=True):
+    if b.button("❌ Reject", width="stretch"):
         api.reject(job_id, reason="rejected from UI")
         st.rerun()
 
@@ -158,7 +158,7 @@ with st.expander("📄 Script / code / timeline"):
 with st.expander("📊 Traces — tokens · estimated cost · latency"):
     try:
         traces = api.get_traces(job_id)
-        st.dataframe(traces.get("rows", []), use_container_width=True)
+        st.dataframe(traces.get("rows", []), width="stretch")
         totals = traces.get("totals", {})
         t = st.columns(3)
         t[0].metric("Total tokens", totals.get("total_tokens", 0))

@@ -60,8 +60,24 @@ def _request_audio(text: str, voice_id: str, model_id: str) -> bytes:
     if response.status_code in _TRANSIENT_STATUS:
         logger.warning("tts_transient_error", status=response.status_code)
         raise TransientTTSError(f"elevenlabs returned {response.status_code}")
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        status_code = exc.response.status_code
+        response_text = exc.response.text[:500]
+        raise RuntimeError(
+            f"ElevenLabs TTS failed with HTTP {status_code} for voice_id={voice_id}. "
+            "Use a valid ElevenLabs voice ID, not an agent ID, and check ElevenLabs quota/billing/access. "
+            f"Response: {response_text}"
+        ) from exc
     return response.content
+
+
+def voice_id_for_language(language: str) -> str:
+    """Return the configured ElevenLabs voice id for a narration language."""
+    if language == "egyptian_arabic":
+        return settings.ELEVENLABS_VOICE_ID_EGYPTIAN_ARABIC
+    return settings.ELEVENLABS_VOICE_ID_ENGLISH
 
 
 def synthesize(text: str, voice_id: str | None = None, model_id: str | None = None) -> Path:

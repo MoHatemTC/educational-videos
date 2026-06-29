@@ -148,8 +148,9 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
         if not PYINSTRUMENT_AVAILABLE:
             return await call_next(request)
 
-        # Start all three profilers
-        tracemalloc.start()
+        # Start profilers. tracemalloc is process-global, so do not stop it per request.
+        if not tracemalloc.is_tracing():
+            tracemalloc.start()
         cpu_start = time.process_time()
 
         profiler = Profiler(async_mode="enabled")
@@ -158,9 +159,13 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
 
         # Capture metrics immediately after the request
         cpu_ms = round((time.process_time() - cpu_start) * 1000, 2)
-        mem_current_kb, mem_peak_kb = (v // 1024 for v in tracemalloc.get_traced_memory())
-        snapshot = tracemalloc.take_snapshot()
-        tracemalloc.stop()
+        if tracemalloc.is_tracing():
+            mem_current_kb, mem_peak_kb = (v // 1024 for v in tracemalloc.get_traced_memory())
+            snapshot = tracemalloc.take_snapshot()
+        else:
+            mem_current_kb = 0
+            mem_peak_kb = 0
+            snapshot = None
 
         wall_ms = round((profiler.last_session.duration if profiler.last_session else 0.0) * 1000, 2)
 
@@ -181,7 +186,7 @@ class ProfilingMiddleware(BaseHTTPMiddleware):
                     "size_kb": round(stat.size / 1024, 2),
                     "count": stat.count,
                 }
-                for stat in snapshot.statistics("lineno")
+                for stat in (snapshot.statistics("lineno") if snapshot is not None else [])
                 if not any(ex in str(stat.traceback[0].filename) for ex in _excluded)
             ]
 

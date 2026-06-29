@@ -143,7 +143,12 @@ class Settings:
         )
         self.LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
         self.LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
-        self.LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+        self.LANGFUSE_BASE_URL = os.getenv("LANGFUSE_BASE_URL") or os.getenv(
+            "LANGFUSE_HOST", "https://cloud.langfuse.com"
+        )
+        self.LANGFUSE_HOST = self.LANGFUSE_BASE_URL
+        self.LANGFUSE_ENVIRONMENT = os.getenv("LANGFUSE_ENVIRONMENT", self.ENVIRONMENT.value)
+        self.LANGFUSE_RELEASE = os.getenv("LANGFUSE_RELEASE", self.VERSION)
 
         # LangGraph Configuration
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("LITELLM_API_KEY", "")
@@ -238,6 +243,10 @@ class Settings:
         # T.T.S.: ElevenLabs
         self.ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
         self.ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "Xb7hH8MSUJpSbSDYk0k2")
+        self.ELEVENLABS_VOICE_ID_ENGLISH = os.getenv("ELEVENLABS_VOICE_ID_ENGLISH", self.ELEVENLABS_VOICE_ID)
+        self.ELEVENLABS_VOICE_ID_EGYPTIAN_ARABIC = os.getenv(
+            "ELEVENLABS_VOICE_ID_EGYPTIAN_ARABIC", self.ELEVENLABS_VOICE_ID
+        )
         self.ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2")
 
         # Vector DB: Qdrant Cloud + FastEmbed (ONNX) embeddings

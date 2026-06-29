@@ -9,7 +9,7 @@ goes to ``reasoning_content``), so callers get clean output.
 
 import time
 
-from openai import OpenAI
+from app.core.traced_openai import create_openai_client
 
 from app.core.config import settings
 from app.core.logging import logger
@@ -25,9 +25,22 @@ class PipelineLLM:
         Args:
             job_id: When set, every call records a trace row on this job.
         """
-        self.client = OpenAI(base_url=settings.LITELLM_BASE_URL, api_key=settings.LITELLM_API_KEY)
+        self.client = create_openai_client(base_url=settings.LITELLM_BASE_URL, api_key=settings.LITELLM_API_KEY)
         self.model = settings.LITELLM_MODEL
         self.job_id = job_id
+
+    def _metadata(self, stage: str) -> dict[str, object]:
+        """Return Langfuse metadata for this pipeline LLM call."""
+        tags = ["video-pipeline", stage[:200], settings.ENVIRONMENT.value]
+        metadata: dict[str, object] = {
+            "pipeline_stage": stage,
+            "environment": settings.ENVIRONMENT.value,
+            "langfuse_tags": tags,
+        }
+        if self.job_id:
+            metadata["job_id"] = self.job_id
+            metadata["langfuse_session_id"] = self.job_id
+        return metadata
 
     def complete(
         self,
@@ -60,6 +73,8 @@ class PipelineLLM:
             ],
             "temperature": settings.LLM_TEMPERATURE if temperature is None else temperature,
             "max_tokens": max_tokens or settings.LLM_MAX_TOKENS,
+            "name": f"video_pipeline.{stage}",
+            "metadata": self._metadata(stage),
         }
         if json_object:
             kwargs["response_format"] = {"type": "json_object"}
