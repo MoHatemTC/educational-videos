@@ -22,6 +22,7 @@ from app.core.prompt_chain import convert_script_to_timeline
 from app.models.video_job import VideoJob
 from app.services.pipeline.agents import generate_code, generate_script, research_topic
 from app.services.pipeline.llm import PipelineLLM
+from app.services.pipeline.narration_guard import clean_narration_text
 from app.services.pipeline.render.ffmpeg_render import assemble_video
 from app.services.pipeline.render.frames import render_frames
 from app.services.pipeline.render.screenshot_video import render_screenshot_video
@@ -187,6 +188,16 @@ def run_render(job_id: str) -> None:
 def _synthesize_and_measure(job_id: str, script: str, language: str) -> tuple[str, float]:
     """Synthesize narration and return (audio_path, clamped_duration)."""
     video_store.update_job(job_id, status="rendering", current_step="tts", awaiting_approval=False)
+
+    cleaned_script = clean_narration_text(script, language)
+    if cleaned_script and cleaned_script != script:
+        logger.warning("narration_sanitized_before_tts", job_id=job_id)
+        script = cleaned_script
+        video_store.update_job(
+            job_id,
+            artifacts_merge={"script": script, "script_sanitized_before_tts": True},
+        )
+
     with langfuse_trace(
         name="video.tts",
         as_type="tool",

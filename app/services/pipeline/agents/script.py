@@ -6,10 +6,13 @@ identifiers correctly.
 """
 
 from app.services.pipeline.llm import PipelineLLM
+from app.services.pipeline.narration_guard import ensure_clean_narration
 
 _SYSTEM = (
-    "You are a scriptwriter for short educational coding videos. The narration is read aloud as a "
-    "voiceover synced to code being typed and run on screen."
+    "You are a scriptwriter for short educational coding videos. "
+    "The narration is read aloud as a voiceover synced to code being typed and run on screen. "
+    "Return only the final spoken narration. Never include analysis, reasoning, drafts, checks, "
+    "self-corrections, word counts, prompt restatement, headings, stage directions, or markdown."
 )
 
 
@@ -33,6 +36,14 @@ def generate_script(llm: PipelineLLM, topic: str, research_notes: str, code: str
         "Write a spoken narration (120-200 words) that walks the viewer through typing and running this "
         "code, explaining what each part does and what the output means. "
         f"{_language_rule(language)} "
-        "Return only the narration text — no headings, no stage directions, no markdown."
+        "Return only the narration text. Do not include headings, stage directions, markdown, analysis, "
+        "reasoning, drafts, checks, self-corrections, word counts, or prompt restatement."
     )
-    return llm.complete(stage="script", system=_SYSTEM, user=user)
+    raw_script = llm.complete(stage="script", system=_SYSTEM, user=user)
+    return ensure_clean_narration(
+        llm,
+        raw_text=raw_script,
+        language=language,
+        stage="script",
+        context=topic,
+    )
