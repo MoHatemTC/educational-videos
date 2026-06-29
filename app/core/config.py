@@ -235,7 +235,7 @@ class Settings:
         self.LLM_PRICE_INPUT_PER_M = float(os.getenv("LLM_PRICE_INPUT_PER_M", "0.60"))
         self.LLM_PRICE_OUTPUT_PER_M = float(os.getenv("LLM_PRICE_OUTPUT_PER_M", "2.50"))
 
-        # TTS: ElevenLabs
+        # T.T.S.: ElevenLabs
         self.ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
         self.ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "Xb7hH8MSUJpSbSDYk0k2")
         self.ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2")

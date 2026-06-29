@@ -13,7 +13,9 @@ class JobRequest(BaseModel):
 
     topic: str = Field(min_length=3, max_length=300, description="Topic/title for the video.")
     language: Language = Field(default="egyptian_arabic", description="Narration language.")
-    mode: Mode = Field(default="code_tutorial", description="code_tutorial = code video; web_explainer = explain a URL.")
+    mode: Mode = Field(
+        default="code_tutorial", description="code_tutorial = code video; web_explainer = explain a URL."
+    )
     url: Optional[str] = Field(default=None, description="Page to explain (required when mode=web_explainer).")
 
     @model_validator(mode="after")

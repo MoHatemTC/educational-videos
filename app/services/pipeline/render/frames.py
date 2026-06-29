@@ -23,7 +23,7 @@ _MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 _BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 
-def _font(path: str, size: int) -> ImageFont.FreeTypeFont:
+def _font(path: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     """Load a TrueType font, falling back to Pillow's default."""
     try:
         return ImageFont.truetype(path, size)

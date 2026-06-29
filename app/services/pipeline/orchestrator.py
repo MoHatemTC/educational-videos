@@ -56,7 +56,7 @@ def run_generation(job_id: str) -> None:
 
 
 def _generate_code_tutorial(job_id: str, job: VideoJob, llm: PipelineLLM) -> None:
-    """research -> code -> self-healing sandbox -> script -> timeline."""
+    """Research -> code -> self-healing sandbox -> script -> timeline."""
     video_store.update_job(job_id, status="running", current_step="research")
     research_notes = research_topic(llm, job.topic, job.language)
     video_store.update_job(job_id, current_step="code", artifacts_merge={"research": research_notes})
@@ -98,7 +98,7 @@ def _generate_code_tutorial(job_id: str, job: VideoJob, llm: PipelineLLM) -> Non
 
 
 def _generate_web_explainer(job_id: str, job: VideoJob, llm: PipelineLLM) -> None:
-    """navigate -> screenshot -> Kimi-vision description -> Egyptian-Arabic script."""
+    """Navigate -> screenshot -> Kimi-vision description -> Egyptian-Arabic script."""
     video_store.update_job(job_id, status="running", current_step="research")
     shots_dir = Path(settings.VIDEO_DATA_DIR) / "screenshots" / job_id
     screenshots = capture_page(job.url, shots_dir)  # type: ignore[arg-type]
@@ -172,7 +172,9 @@ def _render_code_tutorial(job_id: str, job: VideoJob) -> None:
         render_frames(code, job.topic, frames_dir, fps=_RENDER_FPS, duration_s=duration)
         video_path = Path(settings.VIDEO_OUTPUT_DIR) / job_id / "final.mp4"
         assemble_video(frames_dir, _RENDER_FPS, audio_path, video_path)
-        video_store.update_job(job_id, status="done", current_step="done", artifacts_merge={"video_path": str(video_path)})
+        video_store.update_job(
+            job_id, status="done", current_step="done", artifacts_merge={"video_path": str(video_path)}
+        )
     finally:
         shutil.rmtree(frames_dir, ignore_errors=True)
 

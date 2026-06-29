@@ -8,8 +8,10 @@ Sends the screenshot(s) as base64 image_url content to the LiteLLM proxy
 import base64
 import time
 from pathlib import Path
+from typing import Any, cast
 
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 from app.core.config import settings
 from app.core.logging import logger
@@ -26,7 +28,7 @@ def describe_screenshots(screenshots: list[str], url: str, job_id: str | None = 
     """Return a factual, ordered description of the page from its screenshot(s)."""
     client = OpenAI(base_url=settings.LITELLM_BASE_URL, api_key=settings.LITELLM_API_KEY)
 
-    content: list[dict] = [
+    content: list[dict[str, Any]] = [
         {"type": "text", "text": f"Page URL: {url}\nDescribe this page section by section, top to bottom."}
     ]
     for shot in screenshots:
@@ -34,11 +36,15 @@ def describe_screenshots(screenshots: list[str], url: str, job_id: str | None = 
         content.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}})
 
     started = time.monotonic()
+    messages = cast(
+        list[ChatCompletionMessageParam],
+        [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": content}],
+    )
     resp = client.chat.completions.create(
         model=settings.LITELLM_MODEL,
         temperature=0.0,
         max_tokens=1500,
-        messages=[{"role": "system", "content": _SYSTEM}, {"role": "user", "content": content}],
+        messages=messages,
     )
     latency_ms = int((time.monotonic() - started) * 1000)
 

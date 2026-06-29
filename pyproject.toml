@@ -73,6 +73,7 @@ rag = [
     "langchain-chroma>=1.1.0",
     "langchain-text-splitters>=1.0.0",
     "sentence-transformers>=5.5.1",
+    "torch",
 ]
 
 [dependency-groups]
@@ -163,3 +164,12 @@ reportSelfClsParameterName = "error"
 
 # Style nudges
 reportImplicitOverride = "warning"
+
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

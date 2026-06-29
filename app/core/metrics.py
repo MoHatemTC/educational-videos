@@ -46,5 +46,4 @@ def setup_metrics(app):
     Args:
         app: FastAPI application instance
     """
-
     app.add_route("/metrics", metrics)

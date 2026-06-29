@@ -1,4 +1,6 @@
-"""Self-healing code execution: run generated Python in a resource-limited
+"""Self-healing code execution.
+
+Run generated Python in a resource-limited
 subprocess, parse tracebacks, and loop a Kimi repair prompt until it runs clean.
 """
 

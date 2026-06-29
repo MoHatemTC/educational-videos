@@ -10,13 +10,15 @@ wall-clock are enforced. A fully isolated sandbox (Docker/nsjail network ns) is 
 productization item.
 """
 
+import importlib
 import os
-import resource
 import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any, cast
 
 
 @dataclass
@@ -35,13 +37,26 @@ class ExecutionResult:
         return self.exit_code == 0 and not self.timed_out
 
 
-def _limits(cpu_seconds: int, memory_mb: int):
+def _to_text(value: str | bytes | None) -> str:
+    """Normalize subprocess timeout output to text."""
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def _limits(cpu_seconds: int, memory_mb: int) -> Callable[[], None] | None:
     """Return a preexec_fn that applies CPU + address-space rlimits in the child."""
+    if sys.platform == "win32":
+        return None
+
+    resource_module = cast(Any, importlib.import_module("resource"))
 
     def _apply() -> None:
-        resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds))
+        resource_module.setrlimit(resource_module.RLIMIT_CPU, (cpu_seconds, cpu_seconds))
         mem_bytes = memory_mb * 1024 * 1024
-        resource.setrlimit(resource.RLIMIT_AS, (mem_bytes, mem_bytes))
+        resource_module.setrlimit(resource_module.RLIMIT_AS, (mem_bytes, mem_bytes))
 
     return _apply
 
@@ -92,10 +107,12 @@ def run_code(
                 runtime_s=round(time.monotonic() - started, 3),
             )
         except subprocess.TimeoutExpired as exc:
+            stdout = _to_text(exc.stdout)
+            stderr = _to_text(exc.stderr)
             return ExecutionResult(
                 exit_code=-1,
-                stdout=exc.stdout or "",
-                stderr=(exc.stderr or "") + f"\n[killed: exceeded {timeout_s}s wall-clock timeout]",
+                stdout=stdout,
+                stderr=f"{stderr}\n[killed: exceeded {timeout_s}s wall-clock timeout]",
                 timed_out=True,
                 runtime_s=round(time.monotonic() - started, 3),
             )

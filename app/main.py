@@ -81,8 +81,9 @@ async def lifespan(app: FastAPI):
 
     # Cleanup on shutdown
     await cache_service.close()
-    if getattr(agent, "_connection_pool", None):
-        await agent._connection_pool.close()
+    connection_pool = getattr(agent, "_connection_pool", None)
+    if connection_pool is not None:
+        await connection_pool.close()
         logger.info("connection_pool_closed")
     logger.info("application_shutdown")
 

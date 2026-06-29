@@ -32,7 +32,7 @@ class VideoJob(BaseModel, table=True):
         updated_at: Last mutation timestamp (UTC).
     """
 
-    __tablename__ = "video_jobs"
+    __tablename__: Any = "video_jobs"
 
     id: str = Field(primary_key=True)
     topic: str

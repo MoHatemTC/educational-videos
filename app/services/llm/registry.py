@@ -1,5 +1,4 @@
-"""LLM model registry — all models routed through the LiteLLM proxy.
-"""
+"""LLM model registry — all models routed through the LiteLLM proxy."""
 
 from typing import (
     Any,

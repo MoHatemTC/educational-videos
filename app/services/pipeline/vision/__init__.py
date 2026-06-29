@@ -1,5 +1,8 @@
-"""Web-page explainer: navigate a URL, screenshot it, describe it with Kimi
-vision, and narrate the explanation. Reuses TTS + a Ken-Burns render."""
+"""Web-page explainer.
+
+Navigate a URL, screenshot it, describe it with Kimi
+vision, and narrate the explanation. Reuses TTS + a Ken-Burns render.
+"""
 
 from app.services.pipeline.vision.browser import capture_page
 from app.services.pipeline.vision.describe import describe_screenshots
