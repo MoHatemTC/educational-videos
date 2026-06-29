@@ -33,6 +33,7 @@ htmlcov/
 *.ipynb
 *.zip
 */external/
+rag-foundation\RAG-ROADMAP.md
 
 # Generated result files
 results/*
@@ -41,3 +42,26 @@ results/*
 # MVP runtime artifacts
 data/
 output/
+/vision_agent_project/output
+
+
+# Sprint 2 RAG local artifacts
+rag-foundation/.chroma/
+rag-foundation/.chroma_test/
+rag-foundation/chroma/
+rag-foundation/chroma-data/
+rag-foundation/temp_docs/
+rag-foundation/external/
+rag-foundation/data/
+rag-foundation/models/
+rag-foundation/.cache/
+
+# Local vector DB files
+*.sqlite3
+*.sqlite
+*.db
+
+# Local pytest temp files
+rag-foundation/.pytest_tmp/
+# Local pytest temp files
+rag-foundation/.pytest_tmp/

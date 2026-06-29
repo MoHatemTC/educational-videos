@@ -24,15 +24,15 @@ recovery:
 
 vision_model:
   provider: anthropic
-  # Claude model used to return strict JSON recovery plans.
-  model: claude-opus-4
+  # Claude model for JSON recovery plans; override with ANTHROPIC_MODEL.
+  model: ${ANTHROPIC_MODEL:-claude-opus-4-8}
   require_json_plan: true
   # Minimum confidence retained in logs for review and tuning.
   min_confidence: 0.55
 
 computer_use:
   provider: anthropic
-  model: claude-opus-4
+  model: ${ANTHROPIC_MODEL:-claude-opus-4-8}
   # The agent may only reason from screenshots and computer-use actions.
   vision_only: true
   # DOM/CSS/XPath selectors and element handles are intentionally disabled.

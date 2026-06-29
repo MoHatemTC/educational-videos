@@ -15,7 +15,7 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "psycopg[binary]>=3.3.2",
     "psycopg2-binary>=2.9.10",
-    "pydantic[email]>=2.11.1",
+    "pydantic[email]>=2",
     "pydantic-settings>=2.8.1",
     "python-dotenv>=1.1.0",
     "python-jose[cryptography]>=3.4.0",
@@ -40,14 +40,19 @@ dependencies = [
     "uvloop>=0.22.1; platform_system != 'Windows'",
     "asgi-correlation-id>=4.3.4",
     "alembic>=1.18.4",
+    
     # ── Educational-Video MVP additions ──
     "openai>=1.54.0",
     "qdrant-client[fastembed]>=1.12.0",
     "mutagen>=1.47.0",
     "httpx>=0.28.1",
     "streamlit>=1.40.0",
-    "Pillow>=10.0.0",
+    "pillow>=12.2.0",
     "playwright>=1.44,<2.0",
+
+    # ── Mentor/dev branch additions ──
+    "langgraph-checkpoint>=4.1.1",
+    "anthropic>=0.112.0",
 ]
 
 [project.optional-dependencies]
@@ -63,22 +68,26 @@ cache = [
     "redis>=7.4.0",
     "valkey[libvalkey]>=6.1.0",
 ]
+rag = [
+    "chromadb>=1.5.9",
+    "langchain-chroma>=1.1.0",
+    "langchain-text-splitters>=1.0.0",
+    "sentence-transformers>=5.5.1",
+]
 
 [dependency-groups]
 dev = [
     "detect-secrets>=1.5.0",
     "pre-commit>=4.5.1",
-    "pyright>=1.1.390",
     "ruff>=0.11.4",
+    "pyright>=1.1.390",
 ]
-test = ["httpx>=0.28.1", "pytest>=8.3.5"]
+test = [
+    "httpx>=0.28.1",
+    "pytest>=8.3.5",
+    "pytest-mock>=3.14.0",
+]
 
-
-[tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["tests"]
-markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
-python_files = ["test_*.py", "*_test.py", "tests.py"]
 
 [tool.black]
 line-length = 119
@@ -134,13 +143,14 @@ convention = "google"
 "__init__.py" = ["E402"]
 
 [tool.pyright]
-include = ["app", "evals"]
+include = ["app", "evals", "rag-foundation", "code_and_log"]
 exclude = [
-    "**/__pycache__",
     "**/.venv",
+    "**/__pycache__",
+    ".pytest_tmp",
     "alembic/versions",
     "migrations",
-    "venv",
+    "rag-foundation/external",
 ]
 stubPath = "typings"
 pythonVersion = "3.13"

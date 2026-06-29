@@ -3,7 +3,7 @@
 import tiktoken
 from langchain_core.messages import BaseMessage
 from langchain_core.messages import trim_messages as _trim_messages
-
+from typing import cast
 from app.core.config import settings
 from app.core.logging import logger
 from app.schemas import Message
@@ -135,4 +135,9 @@ def prepare_messages(messages: list[Message], system_prompt: str) -> list[Messag
         else:
             raise
 
-    return [Message(role="system", content=system_prompt)] + trimmed_messages
+    prepared_messages = [Message(role="system", content=system_prompt)] + cast(
+        list[Message],
+        trimmed_messages,
+    )
+
+    return prepared_messages
