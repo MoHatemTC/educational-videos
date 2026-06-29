@@ -1,6 +1,7 @@
 """This file contains the main application entry point."""
 
 import asyncio
+import socket
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -36,6 +37,15 @@ load_dotenv()
 langfuse_init()
 
 
+def _postgres_is_reachable(timeout_s: float = 0.25) -> bool:
+    """Return whether the configured PostgreSQL socket is reachable."""
+    try:
+        with socket.create_connection((settings.POSTGRES_HOST, int(settings.POSTGRES_PORT)), timeout=timeout_s):
+            return True
+    except OSError:
+        return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle application startup and shutdown events."""
@@ -66,16 +76,23 @@ async def lifespan(app: FastAPI):
     from app.api.v1.chatbot import agent
     from app.services.memory import memory_service
 
-    try:
-        await asyncio.wait_for(agent.create_graph(), timeout=8)
-        logger.info("graph_pre_warmed")
-    except Exception as e:
-        logger.warning("graph_pre_warm_skipped", error=str(e))
+    if _postgres_is_reachable():
+        try:
+            await asyncio.wait_for(agent.create_graph(), timeout=8)
+            logger.info("graph_pre_warmed")
+        except Exception as e:
+            logger.warning("graph_pre_warm_skipped", error=str(e))
 
-    try:
-        await asyncio.wait_for(memory_service.initialize(), timeout=8)
-    except Exception as e:
-        logger.warning("memory_service_pre_warm_skipped", error=str(e))
+        try:
+            await asyncio.wait_for(memory_service.initialize(), timeout=8)
+        except Exception as e:
+            logger.warning("memory_service_pre_warm_skipped", error=str(e))
+    else:
+        logger.warning(
+            "postgres_unavailable_skipping_chatbot_prewarm",
+            host=settings.POSTGRES_HOST,
+            port=settings.POSTGRES_PORT,
+        )
 
     yield
 
