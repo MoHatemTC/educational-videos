@@ -21,6 +21,7 @@ def duration_seconds(audio_path: str | Path) -> float:
             capture_output=True,
             text=True,
             check=True,
+            timeout=30,
         )
         return float(json.loads(result.stdout)["format"]["duration"])
     except Exception as exc:  # noqa: BLE001 - fall back to mutagen

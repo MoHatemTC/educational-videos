@@ -13,6 +13,7 @@ from app.services.pipeline.tts.audio import duration_seconds
 
 WIDTH, HEIGHT, FPS = 1280, 720, 10
 _BG = "0x1e1e2e"
+_FFMPEG_TIMEOUT_S = 600
 
 
 def _split_durations(total_s: float, n: int) -> list[float]:
@@ -98,7 +99,11 @@ def render_screenshot_video(
         "-shortest",
         str(out),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=_FFMPEG_TIMEOUT_S)
+    except subprocess.TimeoutExpired as exc:
+        logger.error("screenshot_video_timeout", timeout_s=_FFMPEG_TIMEOUT_S)
+        raise RuntimeError(f"ffmpeg timed out after {_FFMPEG_TIMEOUT_S}s") from exc
     if result.returncode != 0:
         logger.error("screenshot_video_failed", stderr=result.stderr[-1500:])
         raise RuntimeError(f"ffmpeg failed: {result.stderr[-400:]}")

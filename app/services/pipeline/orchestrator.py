@@ -105,11 +105,17 @@ def _generate_code_tutorial(job_id: str, job: VideoJob, llm: PipelineLLM) -> Non
     script = generate_script(llm, job.topic, research_notes, code, job.language)
     video_store.update_job(job_id, current_step="timeline", artifacts_merge={"script": script})
 
+    timeline: dict | None
+    timeline_error: str | None
     try:
         timeline = convert_script_to_timeline(script, LLMClient()).model_dump()
+        timeline_error = None
     except Exception as exc:  # noqa: BLE001
+        # Store None (not an empty-events dict, which is invalid against the
+        # Timeline schema) and surface the failure instead of hiding it.
         logger.warning("timeline_generation_failed", job_id=job_id, error=str(exc))
-        timeline = {"events": [], "error": str(exc)}
+        timeline = None
+        timeline_error = str(exc)
 
     video_store.update_job(
         job_id,
@@ -117,7 +123,7 @@ def _generate_code_tutorial(job_id: str, job: VideoJob, llm: PipelineLLM) -> Non
         current_step="awaiting_approval",
         awaiting_approval=True,
         review_status="pending",
-        artifacts_merge={"timeline": timeline},
+        artifacts_merge={"timeline": timeline, "timeline_error": timeline_error},
     )
 
 
@@ -140,7 +146,8 @@ def _generate_web_explainer(job_id: str, job: VideoJob, llm: PipelineLLM) -> Non
         current_step="awaiting_approval",
         awaiting_approval=True,
         review_status="pending",
-        artifacts_merge={"script": script, "timeline": {"events": []}},
+        # web_explainer is screenshot-driven; it has no code-typing Timeline.
+        artifacts_merge={"script": script, "timeline": None},
     )
 
 

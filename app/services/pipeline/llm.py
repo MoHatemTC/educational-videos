@@ -8,6 +8,9 @@ goes to ``reasoning_content``), so callers get clean output.
 """
 
 import time
+from typing import Any
+
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.traced_openai import create_openai_client
 
@@ -41,6 +44,15 @@ class PipelineLLM:
             metadata["job_id"] = self.job_id
             metadata["langfuse_session_id"] = self.job_id
         return metadata
+
+    @retry(
+        reraise=True,
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+    )
+    def _create_completion(self, **kwargs: Any) -> Any:
+        """Call the chat-completions endpoint with exponential-backoff retries."""
+        return self.client.chat.completions.create(**kwargs)
 
     def complete(
         self,
@@ -80,7 +92,7 @@ class PipelineLLM:
             kwargs["response_format"] = {"type": "json_object"}
 
         started = time.monotonic()
-        response = self.client.chat.completions.create(**kwargs)
+        response = self._create_completion(**kwargs)
         latency_ms = int((time.monotonic() - started) * 1000)
 
         usage = getattr(response, "usage", None)
