@@ -48,9 +48,7 @@ _META_MARKERS: tuple[str, ...] = (
 )
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
-_INDEXED_REFERENCE_RE = re.compile(
-    r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\[\s*(?P<index>[^\[\]\n]+?)\s*\]"
-)
+_INDEXED_REFERENCE_RE = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\[\s*(?P<index>[^\[\]\n]+?)\s*\]")
 _LEN_CALL_RE = re.compile(r"\blen\s*\(\s*(?P<arg>[^()\n]+?)\s*\)")
 _COPY_CALL_RE = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*copy\s*\(\s*\)")
 _FENCE_RE = re.compile(r"```(?:text|markdown|arabic|python)?\s*\n(?P<body>.*?)\n```", re.IGNORECASE | re.DOTALL)
