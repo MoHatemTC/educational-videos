@@ -1,0 +1,60 @@
+# Educational-Video MVP — minimal stack: FastAPI backend + Streamlit frontend.
+# Uses SQLite (job store) + Qdrant Cloud (vectors) + LiteLLM/Kimi + ElevenLabs,
+# so no local Postgres/Redis is needed. Secrets come from .env at runtime.
+#
+#   docker compose -f docker-compose.mvp.yml up --build
+#   backend  -> http://localhost:8000/docs
+#   frontend -> http://localhost:8501
+
+name: edu-video-mvp
+
+services:
+  backend:
+    build:
+      context: .
+      args:
+        APP_ENV: development
+    image: edu-video-mvp:latest
+    command: ["/app/.venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=development
+    shm_size: "1gb"  # headless Chromium needs more than the default 64MB /dev/shm
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./vlm_render_mapper:/app/vlm_render_mapper
+      - ./data:/app/data
+      - ./output:/app/output
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: on-failure
+
+  frontend:
+    image: edu-video-mvp:latest
+    entrypoint: []
+    command:
+      - /app/.venv/bin/streamlit
+      - run
+      - frontend/streamlit_app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+    env_file:
+      - .env
+    environment:
+      - API_BASE_URL=http://backend:8000/api/v1
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./frontend:/app/frontend
+      - ./output:/app/output
+      - ./data:/app/data
+    depends_on:
+      - backend
+    restart: on-failure

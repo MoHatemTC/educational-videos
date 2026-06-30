@@ -49,7 +49,8 @@ else
 fi
 
 # Check required sensitive environment variables
-required_vars=("JWT_SECRET_KEY" "OPENAI_API_KEY")
+# All LLM traffic goes through the LiteLLM proxy (Kimi); no OpenAI key required.
+required_vars=("JWT_SECRET_KEY" "LITELLM_API_KEY")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do

@@ -8,7 +8,7 @@ wheels/
 *.jsonl
 
 # Virtual environments
-.venv/
+*venv/
 
 # IDE files
 .idea/
@@ -38,6 +38,10 @@ rag-foundation\RAG-ROADMAP.md
 # Generated result files
 results/*
 !results/eval_report.txt
+
+# MVP runtime artifacts
+data/
+output/
 /vision_agent_project/output
 
 
@@ -59,5 +63,7 @@ rag-foundation/.cache/
 
 # Local pytest temp files
 rag-foundation/.pytest_tmp/
-# Local pytest temp files
-rag-foundation/.pytest_tmp/
+
+# files that reference API KEY
+scripts/find_usable_arabic_voices.py
+scripts/test_voice.py

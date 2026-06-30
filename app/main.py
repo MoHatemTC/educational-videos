@@ -1,5 +1,7 @@
 """This file contains the main application entry point."""
 
+import asyncio
+import socket
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -17,7 +19,6 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.v1.api import api_router
-from app.api.v1.chatbot import agent
 from app.core.cache import cache_service
 from app.core.config import settings
 from app.core.limiter import limiter
@@ -28,13 +29,21 @@ from app.core.middleware import (
     MetricsMiddleware,
     ProfilingMiddleware,
 )
-from app.core.observability import langfuse_init
-from app.services.database import database_service
-from app.services.memory import memory_service
+from app.core.observability import flush_langfuse, langfuse_init
+from app.services.video_store import video_store
 
 # Load environment variables
 load_dotenv()
 langfuse_init()
+
+
+def _postgres_is_reachable(timeout_s: float = 0.25) -> bool:
+    """Return whether the configured PostgreSQL socket is reachable."""
+    try:
+        with socket.create_connection((settings.POSTGRES_HOST, int(settings.POSTGRES_PORT)), timeout=timeout_s):
+            return True
+    except OSError:
+        return False
 
 
 @asynccontextmanager
@@ -45,7 +54,14 @@ async def lifespan(app: FastAPI):
         project_name=settings.PROJECT_NAME,
         version=settings.VERSION,
         api_prefix=settings.API_V1_STR,
+        llm_model=settings.LITELLM_MODEL,
     )
+
+    # Initialize the educational-video job store (SQLite — core MVP store)
+    try:
+        video_store.init_db()
+    except Exception as e:
+        logger.exception("video_store_init_failed", error=str(e))
 
     # Initialize cache service (connects to Valkey if configured)
     try:
@@ -53,28 +69,40 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.exception("cache_initialization_failed", error=str(e))
 
-    # Pre-warm the LangGraph agent: create graph + connection pool at startup
-    # to avoid cold-start latency on the first request
-    try:
-        await agent.create_graph()
-        logger.info("graph_pre_warmed")
-    except Exception as e:
-        logger.exception("graph_pre_warm_failed", error=str(e))
+    # Pre-warm the template chatbot stack (Kimi-backed). Best-effort and time-
+    # boxed: the LangGraph checkpointer + mem0 need Postgres, so when it is
+    # absent we fail fast (a few seconds) instead of blocking boot on the 30s
+    # connection timeout. The app still boots and the video pipeline still runs.
+    from app.api.v1.chatbot import agent
+    from app.services.memory import memory_service
 
-    # Pre-warm mem0 AsyncMemory: initializes pgvector connection and schema check
-    # so the first search() cache miss or add() doesn't pay the ~130ms cold-init cost
-    try:
-        await memory_service.initialize()
-    except Exception as e:
-        logger.exception("memory_service_pre_warm_failed", error=str(e))
+    if _postgres_is_reachable():
+        try:
+            await asyncio.wait_for(agent.create_graph(), timeout=8)
+            logger.info("graph_pre_warmed")
+        except Exception as e:
+            logger.warning("graph_pre_warm_skipped", error=str(e))
+
+        try:
+            await asyncio.wait_for(memory_service.initialize(), timeout=8)
+        except Exception as e:
+            logger.warning("memory_service_pre_warm_skipped", error=str(e))
+    else:
+        logger.warning(
+            "postgres_unavailable_skipping_chatbot_prewarm",
+            host=settings.POSTGRES_HOST,
+            port=settings.POSTGRES_PORT,
+        )
 
     yield
 
     # Cleanup on shutdown
     await cache_service.close()
-    if agent._connection_pool:
-        await agent._connection_pool.close()
+    connection_pool = getattr(agent, "_connection_pool", None)
+    if connection_pool is not None:
+        await connection_pool.close()
         logger.info("connection_pool_closed")
+    flush_langfuse()
     logger.info("application_shutdown")
 
 
@@ -178,18 +206,18 @@ async def health_check(request: Request) -> JSONResponse:
     """
     logger.info("health_check_called")
 
-    # Check database connectivity
+    # Postgres backs only the auth/chatbot stack; the MVP video pipeline uses
+    # SQLite + Qdrant. Report the DB as an informational component but keep the
+    # service healthy (200) so the container stays up without Postgres.
+    from app.services.database import database_service
+
     db_healthy = await database_service.health_check()
 
     response = {
-        "status": "healthy" if db_healthy else "degraded",
+        "status": "healthy",
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT.value,
-        "components": {"api": "healthy", "database": "healthy" if db_healthy else "unhealthy"},
+        "components": {"api": "healthy", "database": "healthy" if db_healthy else "unavailable"},
         "timestamp": datetime.now().isoformat(),
     }
-
-    # If DB is unhealthy, set the appropriate status code
-    status_code = status.HTTP_200_OK if db_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
-
-    return JSONResponse(content=response, status_code=status_code)
+    return JSONResponse(content=response, status_code=status.HTTP_200_OK)

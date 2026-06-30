@@ -24,7 +24,7 @@ import json
 import os
 from typing import Any
 
-from openai import OpenAI
+from app.core.traced_openai import create_openai_client
 
 try:
     from dotenv import load_dotenv
@@ -83,7 +83,7 @@ class LLMClient:
         if missing:
             raise LLMClientError("Missing required environment variable(s): " + ", ".join(missing))
 
-        self.client = OpenAI(
+        self.client = create_openai_client(
             api_key=self.api_key,
             base_url=self.base_url,
         )
@@ -200,6 +200,11 @@ class LLMClient:
                 }
             ],
             "temperature": self.temperature,
+            "name": f"structured_outputs.{schema_name}",
+            "metadata": {
+                "schema_name": schema_name,
+                "langfuse_tags": ["structured-output", schema_name[:200]],
+            },
         }
 
         if use_response_format:
