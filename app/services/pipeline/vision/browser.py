@@ -7,13 +7,52 @@ task off the event loop, so ``capture_page`` wraps the async Playwright API with
 """
 
 import asyncio
+import ipaddress
+import socket
 from pathlib import Path
+from urllib.parse import urlparse
 
 from playwright.async_api import async_playwright
 
 from app.core.logging import logger
 
 _LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
+
+
+def _ensure_public_http_url(url: str) -> None:
+    """Guard against SSRF: allow only http(s) URLs whose host resolves to a public IP.
+
+    Raises:
+        ValueError: If the scheme is not http/https, the host is missing or
+            unresolvable, or it resolves to a private, loopback, link-local,
+            reserved, multicast, or unspecified address (e.g. ``localhost``,
+            ``169.254.169.254``, or internal hosts).
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"unsupported url scheme {parsed.scheme!r}: only http/https are allowed")
+
+    host = parsed.hostname
+    if not host:
+        raise ValueError("url is missing a host")
+
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    try:
+        addr_infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as exc:
+        raise ValueError(f"could not resolve host {host!r}: {exc}") from exc
+
+    for info in addr_infos:
+        ip = ipaddress.ip_address(str(info[4][0]))
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            raise ValueError(f"refusing to navigate to non-public address {ip} for host {host!r}")
 
 
 async def navigate_and_capture(
@@ -35,6 +74,7 @@ async def navigate_and_capture(
     Returns:
         Saved screenshot paths (full page first).
     """
+    _ensure_public_http_url(url)
     out_dir.mkdir(parents=True, exist_ok=True)
     paths: list[Path] = []
 

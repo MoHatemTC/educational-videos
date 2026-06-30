@@ -6,6 +6,8 @@ from typing import Any, cast
 
 from app.core.logging import logger
 
+_FFMPEG_TIMEOUT_S = 600
+
 
 def _ffmpeg_executable() -> str:
     """Return a usable FFmpeg executable path."""
@@ -59,7 +61,11 @@ def assemble_video(frames_dir: str | Path, fps: int, audio_path: str | Path, out
         "-shortest",
         str(output_path),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=_FFMPEG_TIMEOUT_S)
+    except subprocess.TimeoutExpired as exc:
+        logger.error("ffmpeg_assemble_timeout", timeout_s=_FFMPEG_TIMEOUT_S)
+        raise RuntimeError(f"ffmpeg timed out after {_FFMPEG_TIMEOUT_S}s") from exc
     if result.returncode != 0:
         logger.error("ffmpeg_assemble_failed", stderr=result.stderr[-1200:])
         raise RuntimeError(f"ffmpeg failed: {result.stderr[-400:]}")
