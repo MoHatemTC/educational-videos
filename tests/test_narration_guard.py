@@ -40,3 +40,19 @@ def test_clean_narration_removes_inline_markdown_ticks() -> None:
     """Inline markdown ticks should not reach TTS."""
     text = "هنكتب `def bubble_sort(arr):` ونشوف `output`."
     assert clean_narration_text(text, "egyptian_arabic") == "هنكتب def bubble_sort(arr): ونشوف output."
+
+
+def test_clean_narration_rewrites_raw_python_references_for_tts() -> None:
+    """Raw Python references should become readable spoken phrases."""
+    text = "نستخدم len(arr)، ونقارن arr[j] مع arr[j+1]، وبعدها نجرب data.copy()."
+
+    cleaned = clean_narration_text(text, "egyptian_arabic")
+
+    assert "len(arr)" not in cleaned
+    assert "arr[j]" not in cleaned
+    assert "arr[j+1]" not in cleaned
+    assert "data.copy()" not in cleaned
+    assert "length of array" in cleaned
+    assert "element j" in cleaned
+    assert "element j plus 1" in cleaned
+    assert "copy of data" in cleaned
