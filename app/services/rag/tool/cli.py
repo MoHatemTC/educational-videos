@@ -6,9 +6,9 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from ingestion.vector_store import DEFAULT_COLLECTION_NAME, DEFAULT_CHROMA_PERSIST_DIR
-from rag_tool.retriever import retrieve_chunks
-from rag_tool.schema import RetrievalOutput, RetrievalQuery
+from app.services.rag.ingestion.vector_store import DEFAULT_COLLECTION_NAME, DEFAULT_CHROMA_PERSIST_DIR
+from app.services.rag.tool.retriever import retrieve_chunks
+from app.services.rag.tool.schema import RetrievalOutput, RetrievalQuery
 
 
 def build_parser() -> argparse.ArgumentParser:

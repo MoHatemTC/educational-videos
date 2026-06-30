@@ -5,7 +5,7 @@ from pathlib import Path
 
 from langchain_core.documents import Document
 
-from rag_tool.metadata import DocumentMetadata
+from app.services.rag.tool.metadata import DocumentMetadata
 
 SUPPORTED_SUFFIXES = frozenset(
     {

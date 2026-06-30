@@ -4,9 +4,9 @@ from typing import Any
 
 from langchain_core.tools import StructuredTool
 
-from rag_tool.config import get_settings
-from rag_tool.retriever import retrieve_chunks
-from rag_tool.schema import RetrievalQuery
+from app.services.rag.tool.config import get_settings
+from app.services.rag.tool.retriever import retrieve_chunks
+from app.services.rag.tool.schema import RetrievalQuery
 
 
 def retrieve_technical_docs_function(

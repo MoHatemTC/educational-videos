@@ -4,13 +4,13 @@ import argparse
 from pathlib import Path
 from typing import Any
 
-from ingestion.embedder import get_embedding_function
-from ingestion.vector_store import (
+from app.services.rag.ingestion.embedder import get_embedding_function
+from app.services.rag.ingestion.vector_store import (
     DEFAULT_COLLECTION_NAME,
     DEFAULT_CHROMA_PERSIST_DIR,
     get_collection,
 )
-from rag_tool.metadata import build_metadata_filter
+from app.services.rag.tool.metadata import build_metadata_filter
 
 
 def build_parser() -> argparse.ArgumentParser:

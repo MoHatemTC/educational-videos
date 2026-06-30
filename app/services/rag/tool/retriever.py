@@ -4,13 +4,13 @@ from pathlib import Path
 from typing import Any, Final
 from pydantic import ValidationError
 
-from rag_tool.citation import build_chunk_citation
-from ingestion.embedder import get_embedding_function
-from ingestion.vector_store import (
+from app.services.rag.tool.citation import build_chunk_citation
+from app.services.rag.ingestion.embedder import get_embedding_function
+from app.services.rag.ingestion.vector_store import (
     get_collection,
 )
-from rag_tool.metadata import ChunkMetadata, build_metadata_filter
-from rag_tool.schema import RetrievalOutput, RetrievalQuery, RetrievedChunk
+from app.services.rag.tool.metadata import ChunkMetadata, build_metadata_filter
+from app.services.rag.tool.schema import RetrievalOutput, RetrievalQuery, RetrievedChunk
 
 DEFAULT_FETCH_MULTIPLIER: Final[int] = 3
 MAX_DISTANCE_FOR_SCORE: Final[float] = 2.0

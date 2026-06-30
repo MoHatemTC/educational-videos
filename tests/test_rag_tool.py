@@ -1,7 +1,7 @@
 """Tests for the Sprint 2 RAG foundation retrieval stack."""
 
-from rag_tool.tool_definition import retrieve_technical_docs
-from agent.research_agent import (
+from app.services.rag.tool.tool_definition import retrieve_technical_docs
+from app.services.rag.agent.research_agent import (
     build_research_graph,
     prepare_context_node,
     prepare_tool_input_node,
@@ -16,13 +16,13 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from pydantic import ValidationError
 
-from ingestion.chunker import build_chunk_id, chunk_documents
-from ingestion.loader import load_documents
-from ingestion.vector_store import count_vectors, get_collection, upsert_documents
-from rag_tool.citation import build_citation_from_metadata
-from rag_tool.metadata import DocumentMetadata, build_metadata_filter
-from rag_tool.retriever import retrieve_chunks
-from rag_tool.schema import RetrievalQuery
+from app.services.rag.ingestion.chunker import build_chunk_id, chunk_documents
+from app.services.rag.ingestion.loader import load_documents
+from app.services.rag.ingestion.vector_store import count_vectors, get_collection, upsert_documents
+from app.services.rag.tool.citation import build_citation_from_metadata
+from app.services.rag.tool.metadata import DocumentMetadata, build_metadata_filter
+from app.services.rag.tool.retriever import retrieve_chunks
+from app.services.rag.tool.schema import RetrievalQuery
 
 
 class FakeEmbeddings(Embeddings):
@@ -240,7 +240,7 @@ def test_retriever_returns_cited_filtered_chunks(
     )
 
     monkeypatch.setattr(
-        "rag_tool.retriever.get_embedding_function",
+        "app.services.rag.tool.retriever.get_embedding_function",
         lambda: FakeEmbeddings(),
     )
 
@@ -371,7 +371,7 @@ def test_vector_store_upsert_uses_mocked_collection_client(
     collection = MockCollection()
 
     monkeypatch.setattr(
-        "ingestion.vector_store.get_collection",
+        "app.services.rag.ingestion.vector_store.get_collection",
         lambda persist_dir=None, collection_name=None: collection,
     )
 

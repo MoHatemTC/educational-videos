@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from langchain_core.embeddings import Embeddings
 from sentence_transformers import SentenceTransformer
 from typing_extensions import override
-from rag_tool.config import DEFAULT_EMBEDDING_MODEL, get_settings
+from app.services.rag.tool.config import DEFAULT_EMBEDDING_MODEL, get_settings
 
 
 DEFAULT_BATCH_SIZE: Final[int] = 32

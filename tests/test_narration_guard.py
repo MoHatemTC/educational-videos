@@ -36,6 +36,32 @@ Word count is still too short.
     assert cleaned.startswith("هنكتب function")
 
 
+def test_clean_narration_removes_revised_draft_word_breakdown() -> None:
+    """Draft headings, token dumps, and rubric notes should not reach TTS."""
+    leaked = """
+Revised draft:
+هنبدأ بالطريقة التقليدية. هنعمل variable اسمه numbers ونخلي قيمته range of ten.
+بعدين هنعمل empty list اسمها multi_line. لما ن run الكود، الـ values match هتطلع True.
+1. هنبدأ
+2. بالطريقة
+3. التقليدية.
+4. هنعمل
+5. variable
+6. اسمه
+124 words. Good, within range.
+- State that a list comprehension creates a new list in a single line. -> Yes,
+"""
+
+    cleaned = clean_narration_text(leaked, "egyptian_arabic")
+
+    assert cleaned.startswith("هنبدأ بالطريقة التقليدية")
+    assert "Revised draft" not in cleaned
+    assert "1. هنبدأ" not in cleaned
+    assert "124 words" not in cleaned
+    assert "-> Yes" not in cleaned
+    assert "values match" in cleaned
+
+
 def test_clean_narration_removes_inline_markdown_ticks() -> None:
     """Inline markdown ticks should not reach TTS."""
     text = "هنكتب `def bubble_sort(arr):` ونشوف `output`."
@@ -56,3 +82,39 @@ def test_clean_narration_rewrites_raw_python_references_for_tts() -> None:
     assert "element j" in cleaned
     assert "element j plus 1" in cleaned
     assert "copy of data" in cleaned
+
+
+def test_clean_narration_removes_meta_intro_revised_and_inline_count() -> None:
+    """Section-level drafting notes and inline word counts should be stripped."""
+    narration = (
+        "هنبدأ بـ numbers equals list فيها الأرقام من 1 لـ 6. الهدف نعمل list جديدة فيها "
+        "مربعات الأرقام الزوجية بس. في Python، list comprehension بتخلينا نعمل list جديدة "
+        "في سطر واحد. بنستخدم square brackets، وكل البنية بتكون جواهم. أول حاجة جواهم "
+        "بنحط x to the power of 2 عشان نحدد إن كل عنصر في النتيجة هيكون المربع. "
+        "بعد كده بنكتب for x in numbers عشان نلف على كل عنصر في الـ list الأصلية من "
+        "غير ما نكتب for block منفصل. وأخيراً بنضيف if x modulo 2 equals 0 عشان "
+        "نفلتر وناخد الأرقام الزوجية بس قبل التحويل. السطر كامل بيبقى squares equals "
+        "square brackets x to the power of 2 for x in numbers if x modulo 2 equals 0 "
+        "square brackets. لما نعمل run للكود، print squares هيطلع 4 و 16 و 36."
+    )
+    leaked = f"""
+So list is a built-in type name, thus a technical term. It should be in English Latin script.
+Let me write a clean version:
+{narration}
+Revised:
+{narration}
+Let me count again:
+هنبدأ (1) بـ (2) numbers (3) equals (4) list (5) فيها (6) الأرقام (7) من (8) 1 (9)
+About 133 words. Perfect.
+All good. No Arabic transliteration like
+"""
+
+    cleaned = clean_narration_text(leaked, "egyptian_arabic")
+
+    assert cleaned == narration
+    assert "technical term" not in cleaned
+    assert "Let me write" not in cleaned
+    assert "Revised:" not in cleaned
+    assert "Let me count" not in cleaned
+    assert "(1)" not in cleaned
+    assert "About 133 words" not in cleaned

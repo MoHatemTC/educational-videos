@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from rag_tool.metadata import ChunkMetadata
+from app.services.rag.tool.metadata import ChunkMetadata
 
 
 def build_chunk_citation(metadata: ChunkMetadata) -> str:

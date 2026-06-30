@@ -27,6 +27,12 @@ _META_MARKERS: tuple[str, ...] = (
     "let me check",
     "let me revise",
     "let me read",
+    "let me write",
+    "let me count",
+    "clean version",
+    "revised draft",
+    "revised:",
+    "draft:",
     "read it aloud",
     "read aloud mentally",
     "does the narration flow",
@@ -35,8 +41,13 @@ _META_MARKERS: tuple[str, ...] = (
     "actually,",
     "word count",
     "count:",
+    "within range",
+    "words. good",
+    "words. perfect",
+    "good, within range",
     "that's about",
     "this seems good",
+    "all good",
     "covered.",
     "return only",
     "final answer",
@@ -45,6 +56,11 @@ _META_MARKERS: tuple[str, ...] = (
     "prompt:",
     "system prompt",
     "developer instruction",
+    "state that",
+    "technical term",
+    "arabic transliteration",
+    "latin script",
+    "-> yes",
 )
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
@@ -53,6 +69,17 @@ _LEN_CALL_RE = re.compile(r"\blen\s*\(\s*(?P<arg>[^()\n]+?)\s*\)")
 _COPY_CALL_RE = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*copy\s*\(\s*\)")
 _FENCE_RE = re.compile(r"```(?:text|markdown|arabic|python)?\s*\n(?P<body>.*?)\n```", re.IGNORECASE | re.DOTALL)
 _QUOTED_RE = re.compile(r'["\u201c](?P<body>[^"\u201d]{40,})["\u201d]', re.DOTALL)
+_NUMBERED_WORD_LINE_RE = re.compile(r"^\s*\d+\.\s+\S+(?:\s+\S+){0,3}\s*$")
+_DRAFT_HEADING_RE = re.compile(
+    r"^\s*(?:(?:clean|final|revised)\s+)?(?:draft|version|narration|script)\s*:\s*$|^\s*revised\s*:\s*$",
+    re.IGNORECASE,
+)
+_WORD_COUNT_NOTE_RE = re.compile(
+    r"^\s*(?:about\s+)?\d+\s+words?\b.*$|^.*\b\d+\s+words?\b.*(?:good|perfect|range).*$",
+    re.IGNORECASE,
+)
+_CHECKLIST_NOTE_RE = re.compile(r"^\s*-\s+.*(?:->|yes,|no,).*$", re.IGNORECASE)
+_COUNTED_TOKEN_RE = re.compile(r"\(\d+\)|\b\d+\.")
 
 _REPAIR_SYSTEM = (
     "You clean text for a text-to-speech narration pipeline. "
@@ -65,7 +92,14 @@ _REPAIR_SYSTEM = (
 def contains_ai_monologue(text: str) -> bool:
     """Return whether text looks like model analysis instead of narration."""
     lowered = text.lower()
-    return any(marker in lowered for marker in _META_MARKERS)
+    if any(marker in lowered for marker in _META_MARKERS):
+        return True
+
+    numbered_word_lines = sum(1 for line in text.splitlines() if _NUMBERED_WORD_LINE_RE.match(line))
+    if numbered_word_lines >= 5:
+        return True
+
+    return any(_looks_like_counting_line(line) for line in text.splitlines())
 
 
 def _strip_fences(text: str) -> str:
@@ -81,6 +115,26 @@ def _strip_wrapping_quotes(text: str) -> str:
         if stripped.startswith(left) and stripped.endswith(right):
             return stripped[1:-1].strip()
     return stripped
+
+
+def _looks_like_counting_line(line: str) -> bool:
+    """Return whether a line is a token-by-token word-count dump."""
+    return len(_COUNTED_TOKEN_RE.findall(line)) >= 6
+
+
+def _dedupe_repeated_lines(text: str) -> str:
+    """Remove repeated narration lines emitted by draft/revision scaffolding."""
+    seen: set[str] = set()
+    kept: list[str] = []
+
+    for line in text.splitlines():
+        normalized = re.sub(r"\s+", " ", line).strip().lower()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        kept.append(line)
+
+    return "\n".join(kept).strip()
 
 
 def _spoken_identifier(identifier: str) -> str:
@@ -166,6 +220,21 @@ def _drop_non_narration_lines(text: str) -> str:
         lowered = stripped.lower()
         has_arabic = _ARABIC_RE.search(stripped) is not None
 
+        if _DRAFT_HEADING_RE.match(stripped):
+            continue
+
+        if _NUMBERED_WORD_LINE_RE.match(stripped):
+            continue
+
+        if _WORD_COUNT_NOTE_RE.match(stripped):
+            continue
+
+        if _CHECKLIST_NOTE_RE.match(stripped):
+            continue
+
+        if _looks_like_counting_line(stripped):
+            continue
+
         if contains_ai_monologue(stripped) and not has_arabic:
             continue
 
@@ -175,7 +244,8 @@ def _drop_non_narration_lines(text: str) -> str:
         kept.append(stripped)
 
     cleaned = "\n".join(kept).strip()
-    return cleaned.lstrip("\"'“").rstrip("\"'”").strip()
+    deduped = _dedupe_repeated_lines(cleaned)
+    return deduped.lstrip("\"'“").rstrip("\"'”").strip()
 
 
 def _candidate_blocks(text: str) -> Sequence[str]:

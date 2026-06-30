@@ -23,6 +23,7 @@ from app.models.video_job import VideoJob
 from app.services.pipeline.agents import generate_code, generate_script, research_topic
 from app.services.pipeline.llm import PipelineLLM
 from app.services.pipeline.narration_guard import clean_narration_text
+from app.services.pipeline.rag import retrieve_grounding_context
 from app.services.pipeline.render.ffmpeg_render import assemble_video
 from app.services.pipeline.render.frames import render_frames
 from app.services.pipeline.render.screenshot_video import render_screenshot_video
@@ -82,10 +83,20 @@ def run_generation(job_id: str) -> None:
 def _generate_code_tutorial(job_id: str, job: VideoJob, llm: PipelineLLM) -> None:
     """Research -> code -> self-healing sandbox -> script -> timeline."""
     video_store.update_job(job_id, status="running", current_step="research")
-    research_notes = research_topic(llm, job.topic, job.language)
-    video_store.update_job(job_id, current_step="code", artifacts_merge={"research": research_notes})
+    grounding = retrieve_grounding_context(job.topic, job.language)
+    prompt_context = grounding.format_for_prompt()
+    research_notes = research_topic(llm, job.topic, job.language, grounding_context=prompt_context)
+    video_store.update_job(
+        job_id,
+        current_step="code",
+        artifacts_merge={
+            "research": research_notes,
+            "rag_context": grounding.to_artifact(),
+            "citations": grounding.citations,
+        },
+    )
 
-    code = generate_code(llm, job.topic, research_notes)
+    code = generate_code(llm, job.topic, research_notes, grounding_context=prompt_context)
     video_store.update_job(job_id, current_step="sandbox", artifacts_merge={"code": code})
 
     # Self-healing gate: downstream stages use the VALIDATED code.
