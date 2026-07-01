@@ -53,6 +53,7 @@ dependencies = [
     "anthropic>=0.112.0",
     "imageio-ffmpeg>=0.6.0",
     "elevenlabs>=2.54.0",
+    "deepeval>=3.0.0",
 ]
 
 [project.optional-dependencies]

@@ -32,3 +32,11 @@ jobs:
 
       - name: Pytest
         run: uv run pytest -q
+      - name: Pipeline DeepEval hallucination gate
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || secrets.LITELLM_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL || vars.LITELLM_BASE_URL }}
+          PIPELINE_EVAL_MODEL: ${{ vars.PIPELINE_EVAL_MODEL }}
+          PIPELINE_EVAL_BACKEND: deepeval
+        run: uv run python -m evals.pipeline_eval --backend deepeval --max-hallucination-rate 0.05
+
