@@ -30,7 +30,12 @@ from app.services.pipeline.llm import PipelineLLM
 from app.services.pipeline.rag import retrieve_grounding_context
 from app.services.pipeline.sandbox.parser import parse_traceback
 from app.services.pipeline.sandbox.runner import run_code
-from app.services.pipeline.vision import capture_page, describe_screenshots, generate_web_script
+from app.services.pipeline.vision import (
+    capture_page,
+    capture_page_with_actions,
+    describe_screenshots,
+    generate_web_script,
+)
 from app.services.video_store import video_store
 
 _MAX_SANDBOX_REPAIRS = 3
@@ -67,11 +72,14 @@ class PipelineState(TypedDict, total=False):
     screenshots: list[str]
     description: str
     visual_plan: dict[str, Any]
+    raw_script: str
+    vision_actions: list[dict[str, Any]]
     review_status: str
 
 
 ReviewDecision = dict[str, Any]
-Route = Literal["research", "web_capture", "sandbox_repair", "script"]
+Route = Literal["research", "web_capture", "visual_planning", "sandbox_repair", "script"]
+WebCaptureRoute = Literal["web_describe", "web_visual_planning"]
 StateUpdate = dict[str, Any]
 
 
@@ -162,8 +170,10 @@ def _correction_prompt(code: str, traceback_fields: dict[str, Any] | None, attem
 def _load_job(state: PipelineState) -> StateUpdate:
     """Load the latest job row and seed graph state with immutable job inputs."""
     job = _job_or_raise(_required_str(state, "job_id"))
-    video_store.update_job(job.id, status="running", current_step="routing")
-    return {
+    artifacts = job.artifacts or {}
+    raw_script = artifacts.get("raw_script")
+    vision_actions = artifacts.get("vision_actions")
+    update: StateUpdate = {
         "mode": job.mode,
         "topic": job.topic,
         "language": job.language,
@@ -171,11 +181,23 @@ def _load_job(state: PipelineState) -> StateUpdate:
         "sandbox_attempt": 0,
         "sandbox_log": [],
     }
+    if isinstance(raw_script, str) and raw_script.strip():
+        update["raw_script"] = raw_script.strip()
+        update["script"] = raw_script.strip()
+    if isinstance(vision_actions, list):
+        update["vision_actions"] = vision_actions
+
+    video_store.update_job(job.id, status="running", current_step="routing")
+    return update
 
 
 def _route_mode(state: PipelineState) -> Route:
-    """Route jobs into the code tutorial or web explainer branch."""
-    return "web_capture" if state.get("mode") == "web_explainer" else "research"
+    """Route jobs into the code tutorial, raw-script, or web explainer branch."""
+    if state.get("mode") == "web_explainer":
+        return "web_capture"
+    if isinstance(state.get("raw_script"), str) and str(state.get("raw_script")).strip():
+        return "visual_planning"
+    return "research"
 
 
 def _research_node(state: PipelineState) -> StateUpdate:
@@ -339,13 +361,30 @@ def _visual_planning_node(state: PipelineState) -> StateUpdate:
 
 
 def _web_capture_node(state: PipelineState) -> StateUpdate:
-    """Capture screenshots for a web explainer job."""
+    """Capture screenshots for a web explainer job, optionally after coordinate actions."""
     job_id = _required_str(state, "job_id")
     video_store.update_job(job_id, status="running", current_step="web_capture")
     shots_dir = Path(settings.VIDEO_DATA_DIR) / "screenshots" / job_id
-    screenshots = capture_page(_optional_str(state, "url") or "", shots_dir)
-    video_store.update_job(job_id, current_step="web_describe", artifacts_merge={"screenshots": screenshots})
+    actions = state.get("vision_actions")
+    if isinstance(actions, list) and actions:
+        screenshots = capture_page_with_actions(_optional_str(state, "url") or "", shots_dir, actions)
+        visual_driver: dict[str, Any] = {"kind": "coordinate_action_loop", "actions": actions}
+    else:
+        screenshots = capture_page(_optional_str(state, "url") or "", shots_dir)
+        visual_driver = {"kind": "screenshot_capture"}
+    video_store.update_job(
+        job_id,
+        current_step="web_describe",
+        artifacts_merge={"screenshots": screenshots, "vision_driver": visual_driver},
+    )
     return {"screenshots": screenshots}
+
+
+def _route_web_capture(state: PipelineState) -> WebCaptureRoute:
+    """Skip vision description/script generation when a raw web script was supplied."""
+    if isinstance(state.get("raw_script"), str) and str(state.get("raw_script")).strip():
+        return "web_visual_planning"
+    return "web_describe"
 
 
 def _web_describe_node(state: PipelineState) -> StateUpdate:
@@ -386,6 +425,8 @@ def _web_visual_planning_node(state: PipelineState) -> StateUpdate:
         "screenshots": state.get("screenshots", []),
         "timeline": None,
     }
+    if isinstance(state.get("vision_actions"), list) and state.get("vision_actions"):
+        visual_plan["driver"] = {"kind": "coordinate_action_loop", "actions": state.get("vision_actions", [])}
     video_store.update_job(
         _required_str(state, "job_id"),
         current_step="awaiting_approval",
@@ -400,7 +441,7 @@ def _apply_reviewer_edits(job_id: str, decision: ReviewDecision) -> None:
     if not isinstance(edits, dict):
         return
 
-    allowed = {"script", "code", "timeline"}
+    allowed = {"script", "code", "timeline", "tts_settings", "tts_segments"}
     filtered_edits = {key: value for key, value in edits.items() if key in allowed}
     if filtered_edits:
         video_store.update_job(job_id, artifacts_merge=filtered_edits)
@@ -466,14 +507,22 @@ def _build_graph() -> CompiledStateGraph:
     graph.add_node("approval_gate", _approval_gate_node, destinations=(END,))
 
     graph.set_entry_point("load_job")
-    graph.add_conditional_edges("load_job", _route_mode, {"research": "research", "web_capture": "web_capture"})
+    graph.add_conditional_edges(
+        "load_job",
+        _route_mode,
+        {"research": "research", "web_capture": "web_capture", "visual_planning": "visual_planning"},
+    )
     graph.add_edge("research", "code")
     graph.add_edge("code", "sandbox")
     graph.add_conditional_edges("sandbox", _route_sandbox, {"sandbox_repair": "sandbox_repair", "script": "script"})
     graph.add_edge("sandbox_repair", "sandbox")
     graph.add_edge("script", "visual_planning")
     graph.add_edge("visual_planning", "approval_gate")
-    graph.add_edge("web_capture", "web_describe")
+    graph.add_conditional_edges(
+        "web_capture",
+        _route_web_capture,
+        {"web_describe": "web_describe", "web_visual_planning": "web_visual_planning"},
+    )
     graph.add_edge("web_describe", "web_script")
     graph.add_edge("web_script", "web_visual_planning")
     graph.add_edge("web_visual_planning", "approval_gate")

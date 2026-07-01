@@ -6,21 +6,21 @@ reviewer fetches ``/review``, then ``/approve`` (resumes the graph and enqueues
 render) or ``/reject``; the finished MP4 is served from ``/result`` and
 per-stage cost/latency from ``/traces``.
 
-NOTE: slowapi's ``@limiter.limit`` is incompatible with FastAPI 0.121's router
-internals (``_IncludedRouter`` has no ``.path``), so these routes are not
-decorated with it. Re-introduce rate limiting via a compatible mechanism during
-productization.
+Video routes use a lightweight FastAPI dependency for rate limiting because
+slowapi route decorators are not compatible with this router stack.
 """
 
 import asyncio
 import json
 import uuid
 from pathlib import Path
+from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from app.core.logging import logger
+from app.core.rate_limit import enforce_video_rate_limit
 from app.models.video_job import VideoJob
 from app.schemas.video import (
     ApprovalRequest,
@@ -35,7 +35,7 @@ from app.services.pipeline.orchestrator import approve_generation, reject_genera
 from app.services.pipeline.task_queue import enqueue_generation, enqueue_render
 from app.services.video_store import video_store
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_video_rate_limit)])
 
 
 def _job_or_404(job_id: str) -> VideoJob:
@@ -67,7 +67,19 @@ def _status(job: VideoJob) -> JobStatusResponse:
 async def create_job(body: JobRequest, background_tasks: BackgroundTasks) -> JobCreateResponse:
     """Create a generation job and enqueue it on the configured task queue."""
     job_id = str(uuid.uuid4())
-    video_store.create_job(job_id, topic=body.topic, language=body.language, mode=body.mode, url=body.url)
+    video_store.create_job(job_id, topic=body.resolved_topic(), language=body.language, mode=body.mode, url=body.url)
+    initial_artifacts: dict[str, Any] = {}
+    if raw_script := body.resolved_raw_script():
+        initial_artifacts.update({"raw_script": raw_script, "script": raw_script, "research": "supplied raw script"})
+    if body.tts_settings is not None:
+        initial_artifacts["tts_settings"] = body.tts_settings.model_dump(exclude_none=True)
+    if body.tts_segments is not None:
+        initial_artifacts["tts_segments"] = [segment.model_dump(exclude_none=True) for segment in body.tts_segments]
+    if body.vision_actions is not None:
+        initial_artifacts["vision_actions"] = [action.model_dump(exclude_none=True) for action in body.vision_actions]
+    if initial_artifacts:
+        video_store.update_job(job_id, artifacts_merge=initial_artifacts)
+
     try:
         queued = enqueue_generation(job_id, background_tasks=background_tasks)
     except RuntimeError as exc:
@@ -76,7 +88,7 @@ async def create_job(body: JobRequest, background_tasks: BackgroundTasks) -> Job
     logger.info(
         "video_job_enqueued",
         job_id=job_id,
-        topic=body.topic,
+        topic=body.resolved_topic(),
         language=body.language,
         mode=body.mode,
         queue_backend=queued.backend,
@@ -195,6 +207,12 @@ async def approve_job(job_id: str, body: ApprovalRequest, background_tasks: Back
         merge["script"] = body.script
     if body.code is not None:
         merge["code"] = body.code
+    if body.timeline is not None:
+        merge["timeline"] = body.timeline
+    if body.tts_settings is not None:
+        merge["tts_settings"] = body.tts_settings.model_dump(exclude_none=True)
+    if body.tts_segments is not None:
+        merge["tts_segments"] = [segment.model_dump(exclude_none=True) for segment in body.tts_segments]
 
     updated = approve_generation(job_id, reviewer_edits=merge or None)
     try:

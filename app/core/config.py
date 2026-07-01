@@ -264,14 +264,42 @@ class Settings:
         self.LLM_PRICE_INPUT_PER_M = float(os.getenv("LLM_PRICE_INPUT_PER_M", "0.60"))
         self.LLM_PRICE_OUTPUT_PER_M = float(os.getenv("LLM_PRICE_OUTPUT_PER_M", "2.50"))
 
-        # T.T.S.: ElevenLabs
+        # T.T.S.: ElevenLabs. Keep language defaults distinct so a missing env
+        # override does not silently collapse all narration to one voice.
         self.ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
         self.ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "Xb7hH8MSUJpSbSDYk0k2")
-        self.ELEVENLABS_VOICE_ID_ENGLISH = os.getenv("ELEVENLABS_VOICE_ID_ENGLISH", self.ELEVENLABS_VOICE_ID)
+        self.ELEVENLABS_VOICE_ID_ENGLISH = os.getenv("ELEVENLABS_VOICE_ID_ENGLISH", "JBFqnCBsd6RMkjVDRZzb")
         self.ELEVENLABS_VOICE_ID_EGYPTIAN_ARABIC = os.getenv(
             "ELEVENLABS_VOICE_ID_EGYPTIAN_ARABIC", self.ELEVENLABS_VOICE_ID
         )
         self.ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2")
+        self.ELEVENLABS_VOICE_STABILITY = float(os.getenv("ELEVENLABS_VOICE_STABILITY", "0.5"))
+        self.ELEVENLABS_VOICE_SIMILARITY_BOOST = float(os.getenv("ELEVENLABS_VOICE_SIMILARITY_BOOST", "0.75"))
+        self.ELEVENLABS_VOICE_STYLE = float(os.getenv("ELEVENLABS_VOICE_STYLE", "0.0"))
+        self.ELEVENLABS_USE_SPEAKER_BOOST = os.getenv("ELEVENLABS_USE_SPEAKER_BOOST", "false").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+        self.ELEVENLABS_VOICE_EMOTION = os.getenv("ELEVENLABS_VOICE_EMOTION", "neutral")
+
+        # Completion/failure webhooks. n8n can receive this URL.
+        self.VIDEO_WEBHOOK_URL = os.getenv("VIDEO_WEBHOOK_URL", "")
+        self.VIDEO_WEBHOOK_TIMEOUT_SECONDS = float(os.getenv("VIDEO_WEBHOOK_TIMEOUT_SECONDS", "5.0"))
+        self.VIDEO_WEBHOOK_INCLUDE_ARTIFACTS = os.getenv("VIDEO_WEBHOOK_INCLUDE_ARTIFACTS", "false").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+
+        # Generated-code sandbox backend. ``docker`` runs with network disabled
+        # when Docker is available; ``subprocess`` is the local fallback.
+        self.SANDBOX_BACKEND = os.getenv("SANDBOX_BACKEND", "subprocess").lower()
+        self.SANDBOX_DOCKER_IMAGE = os.getenv(
+            "SANDBOX_DOCKER_IMAGE", f"python:{os.getenv('PYTHON_VERSION', '3.13')}-slim"
+        )
 
         # Vector DB / RAG grounding. Qdrant settings are kept for the older
         # cloud path; Sprint 2's integrated retriever currently uses Chroma.

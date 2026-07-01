@@ -24,11 +24,12 @@ from app.core.observability import langfuse_trace
 from app.models.video_job import VideoJob
 from app.services.pipeline.graph import invoke_generation_graph, resume_generation_graph
 from app.services.pipeline.narration_guard import clean_narration_text
+from app.services.pipeline.notifications import notify_job_status
 from app.services.pipeline.render.ffmpeg_render import assemble_video
 from app.services.pipeline.render.frames import render_frames
 from app.services.pipeline.render.screenshot_video import render_screenshot_video
 from app.services.pipeline.tts.audio import duration_seconds
-from app.services.pipeline.tts.elevenlabs import synthesize, voice_id_for_language
+from app.services.pipeline.tts.elevenlabs import synthesize, synthesize_segments, voice_id_for_language
 from app.services.video_store import video_store
 
 _RENDER_FPS = 10
@@ -72,6 +73,7 @@ def run_generation(job_id: str) -> None:
                 trace.update(output={"status": "error", "error": str(exc)})
             logger.exception("pipeline_generation_failed", job_id=job_id, error=str(exc))
             video_store.update_job(job_id, status="error", current_step="error", error_message=str(exc))
+            notify_job_status(job_id, event="video.generation.failed")
 
 
 def approve_generation(job_id: str, reviewer_edits: dict[str, Any] | None = None) -> VideoJob | None:
@@ -81,7 +83,9 @@ def approve_generation(job_id: str, reviewer_edits: dict[str, Any] | None = None
 
 def reject_generation(job_id: str, reason: str | None = None) -> VideoJob | None:
     """Resume the paused generation graph with a rejection decision."""
-    return resume_generation_graph(job_id, approved=False, rejection_reason=reason)
+    job = resume_generation_graph(job_id, approved=False, rejection_reason=reason)
+    notify_job_status(job_id, event="video.job.rejected")
+    return job
 
 
 # ── Render ───────────────────────────────────────────────────────────────────
@@ -106,6 +110,7 @@ def run_render(job_id: str) -> None:
             video_store.update_job(
                 job_id, status="error", current_step="error", error_message="render requires approval"
             )
+            notify_job_status(job_id, event="video.render.failed")
             if trace is not None:
                 trace.update(output={"status": "error", "error": "render requires approval"})
             return
@@ -117,15 +122,17 @@ def run_render(job_id: str) -> None:
                 _render_code_tutorial(job_id, job)
             if trace is not None:
                 trace.update(output={"status": "done"})
+            notify_job_status(job_id, event="video.job.completed")
             logger.info("pipeline_render_done", job_id=job_id, mode=job.mode)
         except Exception as exc:  # noqa: BLE001
             if trace is not None:
                 trace.update(output={"status": "error", "error": str(exc)})
             logger.exception("pipeline_render_failed", job_id=job_id, error=str(exc))
             video_store.update_job(job_id, status="error", current_step="error", error_message=str(exc))
+            notify_job_status(job_id, event="video.render.failed")
 
 
-def _synthesize_and_measure(job_id: str, script: str, language: str) -> tuple[str, float]:
+def _synthesize_and_measure(job_id: str, script: str, language: str, artifacts: dict[str, Any]) -> tuple[str, float]:
     """Synthesize narration and return (audio_path, clamped_duration)."""
     video_store.update_job(job_id, status="rendering", current_step="tts", awaiting_approval=False)
 
@@ -138,21 +145,29 @@ def _synthesize_and_measure(job_id: str, script: str, language: str) -> tuple[st
             artifacts_merge={"script": script, "script_sanitized_before_tts": True},
         )
 
+    voice_id = voice_id_for_language(language)
+    tts_settings = artifacts.get("tts_settings") if isinstance(artifacts.get("tts_settings"), dict) else None
+    tts_segments = artifacts.get("tts_segments") if isinstance(artifacts.get("tts_segments"), list) else None
+
     with langfuse_trace(
         name="video.tts",
         as_type="tool",
-        input_data={"job_id": job_id, "characters": len(script)},
+        input_data={"job_id": job_id, "characters": len(script), "segments": len(tts_segments or [])},
         metadata={
             "job_id": job_id,
             "provider": "elevenlabs",
             "language": language,
-            "voice_id": voice_id_for_language(language),
+            "voice_id": voice_id,
+            "emotion": (tts_settings or {}).get("emotion") if isinstance(tts_settings, dict) else None,
             "environment": settings.ENVIRONMENT.value,
         },
         session_id=job_id,
         tags=["video-pipeline", "tts", settings.ENVIRONMENT.value],
     ) as trace:
-        audio_path = synthesize(script, voice_id=voice_id_for_language(language))
+        if tts_segments:
+            audio_path = synthesize_segments(tts_segments, default_voice_id=voice_id, default_language=language)
+        else:
+            audio_path = synthesize(script, voice_id=voice_id, voice_settings=tts_settings)
         duration = max(3.0, min(duration_seconds(audio_path), _MAX_RENDER_SECONDS))
         if trace is not None:
             trace.update(output={"audio_path": str(audio_path), "duration_s": round(duration, 2)})
@@ -170,7 +185,7 @@ def _render_code_tutorial(job_id: str, job: VideoJob) -> None:
     script = (artifacts.get("script") or job.topic).strip()
     code = (artifacts.get("code") or "# no code").strip()
 
-    audio_path, duration = _synthesize_and_measure(job_id, script, job.language)
+    audio_path, duration = _synthesize_and_measure(job_id, script, job.language, artifacts)
     frames_dir = Path(tempfile.gettempdir()) / "render" / job_id / "frames"
     try:
         if frames_dir.exists():
@@ -194,7 +209,7 @@ def _render_web_explainer(job_id: str, job: VideoJob) -> None:
     if not screenshots:
         raise RuntimeError("no screenshots available to render")
 
-    audio_path, duration = _synthesize_and_measure(job_id, script, job.language)
+    audio_path, duration = _synthesize_and_measure(job_id, script, job.language, artifacts)
     video_path = Path(settings.VIDEO_OUTPUT_DIR) / job_id / "final.mp4"
     render_screenshot_video(screenshots, audio_path, str(video_path), duration)
     video_store.update_job(job_id, status="done", current_step="done", artifacts_merge={"video_path": str(video_path)})
