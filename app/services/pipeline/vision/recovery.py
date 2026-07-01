@@ -1,12 +1,16 @@
-"""Vision-model-driven UI recovery for computer-use agents."""
+"""Canonical vision recovery layer for DOM-independent browser agents.
+
+The recovery manager is intentionally sync: it is a deterministic post-observe
+decision layer that is called from worker-owned browser automation. Async browser
+loops should call it at their recovery boundary after awaiting screenshot/action
+operations.
+"""
 
 from __future__ import annotations
 
 import base64
 import hashlib
 import json
-import logging
-import os
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -16,6 +20,9 @@ from pathlib import Path
 from typing import Any, Callable, Protocol, Sequence
 
 from PIL import Image, ImageChops, ImageStat
+
+from app.core.config import settings
+from app.core.logging import logger
 
 
 class InterruptionType(str, Enum):
@@ -87,30 +94,29 @@ class VisionRecoveryClient(Protocol):
 class RecoveryConfig:
     """Configuration values for visual recovery."""
 
-    enabled: bool = True
-    mode: str = "vision_model"
-    max_total_recovery_attempts: int = 8
-    max_attempts_per_step: int = 3
-    max_attempts_per_interruption_type: int = 2
-    max_consecutive_same_class_url: int = 2
-    screenshot_diff_threshold: float = 0.18
-    stable_screen_threshold: float = 0.03
-    recovery_wait_ms: int = 700
-    blocked_types: tuple[InterruptionType, ...] = (
-        InterruptionType.CAPTCHA,
-        InterruptionType.LOGIN_WALL,
+    enabled: bool = field(default_factory=lambda: settings.VISION_RECOVERY_ENABLED)
+    mode: str = field(default_factory=lambda: settings.VISION_RECOVERY_MODE)
+    max_total_recovery_attempts: int = field(default_factory=lambda: settings.VISION_RECOVERY_MAX_TOTAL_ATTEMPTS)
+    max_attempts_per_step: int = field(default_factory=lambda: settings.VISION_RECOVERY_MAX_ATTEMPTS_PER_STEP)
+    max_attempts_per_interruption_type: int = field(
+        default_factory=lambda: settings.VISION_RECOVERY_MAX_ATTEMPTS_PER_TYPE
     )
-    log_path: Path = Path("logs/recovery_events.jsonl")
-    include_screenshot_hash: bool = True
-    vision_provider: str = "anthropic"
-    vision_model: str = field(default_factory=lambda: _model_from_environment(required=False))
-    require_json_plan: bool = True
-    min_confidence: float = 0.55
+    max_consecutive_same_class_url: int = field(default_factory=lambda: settings.VISION_RECOVERY_MAX_SAME_CLASS_URL)
+    screenshot_diff_threshold: float = field(default_factory=lambda: settings.VISION_RECOVERY_DIFF_THRESHOLD)
+    stable_screen_threshold: float = field(default_factory=lambda: settings.VISION_RECOVERY_STABLE_THRESHOLD)
+    recovery_wait_ms: int = field(default_factory=lambda: settings.VISION_RECOVERY_WAIT_MS)
+    blocked_types: tuple[InterruptionType, ...] = field(default_factory=lambda: _blocked_types_from_settings())
+    log_path: Path = field(default_factory=lambda: Path(settings.VISION_RECOVERY_LOG_PATH))
+    include_screenshot_hash: bool = field(default_factory=lambda: settings.VISION_RECOVERY_INCLUDE_SCREENSHOT_HASH)
+    vision_provider: str = field(default_factory=lambda: settings.VISION_RECOVERY_PROVIDER)
+    vision_model: str = field(default_factory=lambda: _model_from_settings(required=False))
+    require_json_plan: bool = field(default_factory=lambda: settings.VISION_RECOVERY_REQUIRE_JSON_PLAN)
+    min_confidence: float = field(default_factory=lambda: settings.VISION_RECOVERY_MIN_CONFIDENCE)
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> RecoveryConfig:
-        """Load recovery configuration from a YAML file."""
-        return load_recovery_config(path)
+    def from_settings(cls) -> RecoveryConfig:
+        """Create recovery configuration from app/core/config.py settings."""
+        return cls()
 
 
 @dataclass(frozen=True)
@@ -153,7 +159,7 @@ class AnthropicVisionRecoveryClient:
         min_confidence: float = 0.55,
     ) -> None:
         """Initialize with an Anthropic client or lazily create one."""
-        self.model = model or _model_from_environment(required=True)
+        self.model = model or _model_from_settings(required=True)
         self.recovery_wait_ms = recovery_wait_ms
         self.min_confidence = min_confidence
         if client is not None:
@@ -782,91 +788,18 @@ class RecoveryManager:
         self.log_event(event)
 
 
-def _model_from_environment(*, required: bool) -> str:
-    """Return the configured Anthropic model from the environment.
-
-    The recovery layer deliberately does not own a hardcoded source-code
-    model ID. In the integrated app this should come from DEFAULT_LLM_MODEL;
-    ANTHROPIC_MODEL is accepted for standalone code_and_log runs.
-    """
-    model = os.getenv("ANTHROPIC_MODEL") or os.getenv("DEFAULT_LLM_MODEL") or ""
+def _model_from_settings(*, required: bool) -> str:
+    """Return the configured Anthropic-compatible vision recovery model."""
+    model = settings.VISION_RECOVERY_MODEL or settings.DEFAULT_LLM_MODEL or ""
     if required and not model:
-        msg = (
-            "Set ANTHROPIC_MODEL or DEFAULT_LLM_MODEL to a valid Anthropic "
-            "model ID before creating AnthropicVisionRecoveryClient."
-        )
+        msg = "Set VISION_RECOVERY_MODEL or DEFAULT_LLM_MODEL before creating AnthropicVisionRecoveryClient."
         raise RuntimeError(msg)
     return model
 
 
-def _resolve_env_template(value: Any) -> Any:
-    """Resolve simple ${ENV:-fallback} config values without adding dependencies."""
-    if not isinstance(value, str):
-        return value
-    stripped = value.strip()
-    if not (stripped.startswith("${") and stripped.endswith("}")):
-        return value
-    expression = stripped[2:-1]
-    name, separator, fallback = expression.partition(":-")
-    env_value = os.getenv(name.strip())
-    if env_value:
-        return env_value
-    if separator:
-        return fallback
-    return ""
-
-
-def load_recovery_config(path: str | Path) -> RecoveryConfig:
-    """Load recovery config from an agent YAML file."""
-    try:
-        import yaml
-    except ImportError:
-        raw = _load_simple_yaml(path)
-    else:
-        with Path(path).open("r", encoding="utf-8") as config_file:
-            raw = yaml.safe_load(config_file) or {}
-
-    recovery = raw.get("recovery", raw)
-    logging = raw.get("logging", {})
-    vision_model = raw.get("vision_model", {})
-    values: dict[str, Any] = {}
-    for field_name in (
-        "enabled",
-        "mode",
-        "max_total_recovery_attempts",
-        "max_attempts_per_step",
-        "max_attempts_per_interruption_type",
-        "max_consecutive_same_class_url",
-        "screenshot_diff_threshold",
-        "stable_screen_threshold",
-        "recovery_wait_ms",
-    ):
-        if field_name in recovery:
-            values[field_name] = recovery[field_name]
-
-    blocked_types = recovery.get("blocked_types")
-    if blocked_types is not None:
-        values["blocked_types"] = tuple(_interruption_type_from_string(item) for item in blocked_types)
-
-    log_path = logging.get("path", recovery.get("log_path"))
-    if log_path is not None:
-        values["log_path"] = Path(log_path)
-
-    include_hash = logging.get("include_screenshot_hash")
-    include_hash = recovery.get("include_screenshot_hash", include_hash)
-    if include_hash is not None:
-        values["include_screenshot_hash"] = bool(include_hash)
-
-    if "provider" in vision_model:
-        values["vision_provider"] = vision_model["provider"]
-    if "model" in vision_model:
-        values["vision_model"] = str(_resolve_env_template(vision_model["model"]))
-    if "require_json_plan" in vision_model:
-        values["require_json_plan"] = bool(vision_model["require_json_plan"])
-    if "min_confidence" in vision_model:
-        values["min_confidence"] = float(vision_model["min_confidence"])
-
-    return RecoveryConfig(**values)
+def _blocked_types_from_settings() -> tuple[InterruptionType, ...]:
+    """Return interruption classes that the recovery layer must never bypass."""
+    return tuple(_interruption_type_from_string(item) for item in settings.VISION_RECOVERY_BLOCKED_TYPES)
 
 
 def _json_from_model_response(response: Any) -> Mapping[str, Any]:
@@ -895,7 +828,7 @@ def _safe_plan_from_response(response: Any) -> VisionRecoveryPlan:
     try:
         return _plan_from_mapping(_json_from_model_response(response))
     except Exception as exc:  # noqa: BLE001
-        logging.warning("Invalid vision recovery model output: %s", exc)
+        logger.warning("invalid_vision_recovery_model_output", error=str(exc))
         return _fallback_none_plan()
 
 
@@ -903,12 +836,12 @@ def _plan_from_mapping(data: Mapping[str, Any]) -> VisionRecoveryPlan:
     """Validate and convert JSON-like data into a recovery plan."""
     raw_type = data.get("interruption_type")
     if raw_type is None:
-        logging.warning("Vision recovery model output missing interruption_type.")
+        logger.warning("vision_recovery_model_missing_interruption_type")
         return _fallback_none_plan()
     try:
         interruption_type = _interruption_type_from_string(raw_type)
     except ValueError:
-        logging.warning("Unexpected interruption class from model: %s", raw_type)
+        logger.warning("unexpected_vision_recovery_interruption_class", interruption_class=str(raw_type))
         return _fallback_none_plan()
     target = _target_from_mapping(data.get("target"))
     actions = [
@@ -917,7 +850,7 @@ def _plan_from_mapping(data: Mapping[str, Any]) -> VisionRecoveryPlan:
     try:
         confidence = max(0.0, min(1.0, float(data.get("confidence", 0.0))))
     except (TypeError, ValueError):
-        logging.warning("Invalid confidence from model: %s", data.get("confidence"))
+        logger.warning("invalid_vision_recovery_confidence", confidence=data.get("confidence"))
         confidence = 0.0
     return VisionRecoveryPlan(
         interruption_type=interruption_type,
@@ -934,7 +867,7 @@ def _target_from_mapping(value: Any) -> RecoveryTarget | None:
     if value is None:
         return None
     if not isinstance(value, Mapping):
-        logging.warning("Ignoring invalid recovery target: %s", value)
+        logger.warning("invalid_vision_recovery_target", target=str(value))
         return None
     try:
         return RecoveryTarget(
@@ -944,22 +877,22 @@ def _target_from_mapping(value: Any) -> RecoveryTarget | None:
             reason=str(value.get("reason", "")),
         )
     except (KeyError, TypeError, ValueError):
-        logging.warning("Ignoring recovery target with invalid coordinates: %s", value)
+        logger.warning("invalid_vision_recovery_target_coordinates", target=str(value))
         return None
 
 
 def _action_from_mapping(value: Any) -> RecoveryAction | None:
     """Convert a JSON action object into a recovery action."""
     if not isinstance(value, Mapping):
-        logging.warning("Ignoring invalid recovery action: %s", value)
+        logger.warning("invalid_vision_recovery_action", action=str(value))
         return None
     name = str(value.get("name", ""))
     if name not in _ALLOWED_ACTIONS:
-        logging.warning("Ignoring unsupported recovery action: %s", name)
+        logger.warning("unsupported_vision_recovery_action", action_name=name)
         return None
     args = value.get("args", {})
     if not isinstance(args, Mapping):
-        logging.warning("Ignoring recovery action with invalid args: %s", value)
+        logger.warning("invalid_vision_recovery_action_args", action=str(value))
         return None
     return RecoveryAction(name=name, args=dict(args))
 
@@ -1011,54 +944,6 @@ def _interruption_type_from_string(value: Any) -> InterruptionType:
     except KeyError as exc:
         msg = f"Unknown interruption type: {value}"
         raise ValueError(msg) from exc
-
-
-def _load_simple_yaml(path: str | Path) -> dict[str, Any]:
-    """Parse the limited YAML subset used by agent_config.yaml when PyYAML is absent."""
-    root: dict[str, Any] = {}
-    section: dict[str, Any] | None = None
-    current_list_key: str | None = None
-    for raw_line in Path(path).read_text(encoding="utf-8").splitlines():
-        line = raw_line.split("#", 1)[0].rstrip()
-        if not line:
-            continue
-        if not line.startswith(" "):
-            key = line[:-1].strip()
-            root[key] = {}
-            section = root[key]
-            current_list_key = None
-            continue
-        if section is None:
-            continue
-        stripped = line.strip()
-        if stripped.startswith("- ") and current_list_key is not None:
-            section[current_list_key].append(_parse_simple_yaml_scalar(stripped[2:].strip()))
-            continue
-        key, _, value = stripped.partition(":")
-        key = key.strip()
-        value = value.strip()
-        if value == "":
-            section[key] = []
-            current_list_key = key
-        else:
-            section[key] = _parse_simple_yaml_scalar(value)
-            current_list_key = None
-    return root
-
-
-def _parse_simple_yaml_scalar(value: str) -> Any:
-    """Parse a basic YAML scalar."""
-    lower = value.lower()
-    if lower == "true":
-        return True
-    if lower == "false":
-        return False
-    try:
-        if "." in value:
-            return float(value)
-        return int(value)
-    except ValueError:
-        return value.strip("\"'")
 
 
 _ALLOWED_ACTIONS = frozenset({"click", "key", "wait", "reload", "back", "scroll"})

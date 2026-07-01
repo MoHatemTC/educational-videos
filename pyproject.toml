@@ -148,7 +148,7 @@ convention = "google"
 "__init__.py" = ["E402"]
 
 [tool.pyright]
-include = ["app", "evals", "code_and_log"]
+include = ["app", "evals"]
 exclude = [
     "**/.venv",
     "**/__pycache__",

@@ -212,6 +212,43 @@ class Settings:
         self.VIDEO_TASK_QUEUE_MAX_RETRIES = int(os.getenv("VIDEO_TASK_QUEUE_MAX_RETRIES", "2"))
         self.VIDEO_TASK_QUEUE_VISIBILITY_TIMEOUT = int(os.getenv("VIDEO_TASK_QUEUE_VISIBILITY_TIMEOUT", "3600"))
 
+        # Canonical vision-agent recovery settings. The graduated recovery layer
+        # lives under app/services/pipeline/vision and no longer reads YAML from
+        # code_and_log/.
+        self.VISION_RECOVERY_ENABLED = os.getenv("VISION_RECOVERY_ENABLED", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+        self.VISION_RECOVERY_MODE = os.getenv("VISION_RECOVERY_MODE", "vision_model")
+        self.VISION_RECOVERY_MAX_TOTAL_ATTEMPTS = int(os.getenv("VISION_RECOVERY_MAX_TOTAL_ATTEMPTS", "8"))
+        self.VISION_RECOVERY_MAX_ATTEMPTS_PER_STEP = int(os.getenv("VISION_RECOVERY_MAX_ATTEMPTS_PER_STEP", "3"))
+        self.VISION_RECOVERY_MAX_ATTEMPTS_PER_TYPE = int(os.getenv("VISION_RECOVERY_MAX_ATTEMPTS_PER_TYPE", "2"))
+        self.VISION_RECOVERY_MAX_SAME_CLASS_URL = int(os.getenv("VISION_RECOVERY_MAX_SAME_CLASS_URL", "2"))
+        self.VISION_RECOVERY_DIFF_THRESHOLD = float(os.getenv("VISION_RECOVERY_DIFF_THRESHOLD", "0.18"))
+        self.VISION_RECOVERY_STABLE_THRESHOLD = float(os.getenv("VISION_RECOVERY_STABLE_THRESHOLD", "0.03"))
+        self.VISION_RECOVERY_WAIT_MS = int(os.getenv("VISION_RECOVERY_WAIT_MS", "700"))
+        self.VISION_RECOVERY_BLOCKED_TYPES = parse_list_from_env(
+            "VISION_RECOVERY_BLOCKED_TYPES",
+            ["CAPTCHA", "LOGIN_WALL"],
+        )
+        self.VISION_RECOVERY_LOG_PATH = Path(
+            os.getenv("VISION_RECOVERY_LOG_PATH", str(self.LOG_DIR / "recovery_events.jsonl"))
+        )
+        self.VISION_RECOVERY_INCLUDE_SCREENSHOT_HASH = os.getenv(
+            "VISION_RECOVERY_INCLUDE_SCREENSHOT_HASH", "true"
+        ).lower() in ("true", "1", "t", "yes")
+        self.VISION_RECOVERY_PROVIDER = os.getenv("VISION_RECOVERY_PROVIDER", "anthropic")
+        self.VISION_RECOVERY_MODEL = os.getenv("VISION_RECOVERY_MODEL") or os.getenv("ANTHROPIC_MODEL", "")
+        self.VISION_RECOVERY_REQUIRE_JSON_PLAN = os.getenv("VISION_RECOVERY_REQUIRE_JSON_PLAN", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+        self.VISION_RECOVERY_MIN_CONFIDENCE = float(os.getenv("VISION_RECOVERY_MIN_CONFIDENCE", "0.55"))
+
         # Rate Limiting Configuration
         self.RATE_LIMIT_DEFAULT = parse_list_from_env("RATE_LIMIT_DEFAULT", ["200 per day", "50 per hour"])
 

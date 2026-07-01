@@ -1,3 +1,9 @@
+# Deprecated prototype
+
+> This folder is a fenced historical prototype. The canonical integrated vision agent now lives in `app/services/pipeline/vision/`. Do not add new product features here; migrate useful code into the app package instead. See `docs/vision-agents.md`.
+
+---
+
 # Vision-based UI Agent — Browser Automation PoC
 
 A minimal proof of concept for browser automation driven by **vision**, not by
