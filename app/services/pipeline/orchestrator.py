@@ -253,7 +253,8 @@ def _render_code_tutorial(job_id: str, job: VideoJob) -> None:
     try:
         if frames_dir.exists():
             shutil.rmtree(frames_dir, ignore_errors=True)
-        render_frames(code, job.topic, frames_dir, fps=_RENDER_FPS, duration_s=duration)
+        timeline = artifacts.get("timeline") if not artifacts.get("timeline_error") else None
+        render_frames(code, job.topic, frames_dir, fps=_RENDER_FPS, duration_s=duration, timeline=timeline)
         video_path = Path(settings.VIDEO_OUTPUT_DIR) / job_id / "final.mp4"
         assemble_video(frames_dir, _RENDER_FPS, audio_path, video_path)
         video_store.update_job(
