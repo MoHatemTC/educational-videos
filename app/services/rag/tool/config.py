@@ -1,12 +1,12 @@
-"""Environment-backed configuration for the RAG foundation stack."""
+"""Environment-backed configuration for the integrated RAG stack."""
 
-import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Final
 
-from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
+
+from app.core.config import settings as app_settings
 
 DEFAULT_EMBEDDING_PROVIDER: Final[str] = "sentence_transformers"
 DEFAULT_EMBEDDING_MODEL: Final[str] = "sentence-transformers/all-MiniLM-L6-v2"
@@ -57,34 +57,17 @@ class RagSettings(BaseModel):
 
 @lru_cache(maxsize=1)
 def get_settings() -> RagSettings:
-    """Load typed RAG settings from environment variables.
+    """Load typed RAG settings from application settings.
 
     Returns:
         Validated RAG settings.
     """
-    load_dotenv()
-
     return RagSettings(
-        embedding_provider=os.getenv(
-            "EMBEDDING_PROVIDER",
-            DEFAULT_EMBEDDING_PROVIDER,
-        ),
-        embedding_model=os.getenv("EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL),
-        chroma_persist_dir=Path(
-            os.getenv("CHROMA_PERSIST_DIR", DEFAULT_CHROMA_PERSIST_DIR),
-        ),
-        chroma_collection=os.getenv("CHROMA_COLLECTION", DEFAULT_CHROMA_COLLECTION),
-        default_top_k=int(os.getenv("DEFAULT_TOP_K", str(DEFAULT_TOP_K))),
-        default_similarity_threshold=float(
-            os.getenv(
-                "DEFAULT_SIMILARITY_THRESHOLD",
-                str(DEFAULT_SIMILARITY_THRESHOLD),
-            )
-        ),
-        hf_token=os.getenv("HF_TOKEN") or None,
-        disable_hf_symlink_warning=os.getenv(
-            "HF_HUB_DISABLE_SYMLINKS_WARNING",
-            "1",
-        )
-        == "1",
+        embedding_provider=DEFAULT_EMBEDDING_PROVIDER,
+        embedding_model=app_settings.EMBEDDING_MODEL,
+        chroma_persist_dir=Path(app_settings.RAG_CHROMA_PERSIST_DIR),
+        chroma_collection=app_settings.RAG_CHROMA_COLLECTION,
+        default_top_k=app_settings.RAG_TOP_K,
+        default_similarity_threshold=app_settings.RAG_SIMILARITY_THRESHOLD,
+        hf_token=app_settings.HF_TOKEN or None,
     )

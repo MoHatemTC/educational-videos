@@ -3,10 +3,10 @@
 import argparse
 from pathlib import Path
 
-from ingestion.chunker import DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE, chunk_documents
-from ingestion.embedder import get_embedding_function
-from ingestion.loader import load_documents
-from ingestion.vector_store import (
+from app.services.rag.ingestion.chunker import DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE, chunk_documents
+from app.services.rag.ingestion.embedder import get_embedding_function
+from app.services.rag.ingestion.loader import load_documents
+from app.services.rag.ingestion.vector_store import (
     DEFAULT_COLLECTION_NAME,
     DEFAULT_CHROMA_PERSIST_DIR,
     UpsertStats,

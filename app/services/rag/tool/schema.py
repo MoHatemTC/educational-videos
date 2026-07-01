@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from rag_tool.metadata import ChunkMetadata
+from app.services.rag.tool.metadata import ChunkMetadata
 
 
 class RetrievalQuery(BaseModel):

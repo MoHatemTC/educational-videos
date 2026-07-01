@@ -8,6 +8,7 @@ are retried with exponential back-off; auth/validation errors fail fast.
 
 import hashlib
 from pathlib import Path
+from typing import Any
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -19,8 +20,46 @@ _API_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
 _TRANSIENT_STATUS = {429, 500, 502, 503, 504}
 
 
+class TTSError(RuntimeError):
+    """Non-retryable TTS failure."""
+
+
+class TTSQuotaExceededError(TTSError):
+    """TTS provider quota or subscription limit was reached."""
+
+
 class TransientTTSError(Exception):
     """Retryable TTS failure (rate limit / 5xx)."""
+
+
+def _json_detail(response: httpx.Response) -> dict[str, Any]:
+    """Return an ElevenLabs error detail object when available."""
+    try:
+        payload = response.json()
+    except ValueError:
+        return {}
+
+    detail = payload.get("detail")
+    if isinstance(detail, dict):
+        return detail
+
+    return {}
+
+
+def _raise_api_error(response: httpx.Response, voice_id: str) -> None:
+    """Raise a clear provider error for an ElevenLabs failure response."""
+    detail = _json_detail(response)
+    code = str(detail.get("code") or "")
+    message = str(detail.get("message") or response.text[:500])
+    status = str(detail.get("status") or "")
+
+    if code in {"quota_exceeded", "paid_plan_required"} or status in {"quota_exceeded", "payment_required"}:
+        raise TTSQuotaExceededError(f"ElevenLabs quota/plan limit for voice_id={voice_id}: {message}")
+
+    raise TTSError(
+        f"ElevenLabs TTS failed with HTTP {response.status_code} for voice_id={voice_id}. "
+        f"Provider code={code or 'unknown'}. Response: {response.text[:500]}"
+    )
 
 
 def _cache_dir() -> Path:
@@ -57,19 +96,16 @@ def _request_audio(text: str, voice_id: str, model_id: str) -> bytes:
     with httpx.Client(timeout=180.0) as client:
         response = client.post(_API_URL.format(voice_id=voice_id), headers=headers, json=body)
 
-    if response.status_code in _TRANSIENT_STATUS:
-        logger.warning("tts_transient_error", status=response.status_code)
-        raise TransientTTSError(f"elevenlabs returned {response.status_code}")
-    try:
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        status_code = exc.response.status_code
-        response_text = exc.response.text[:500]
-        raise RuntimeError(
-            f"ElevenLabs TTS failed with HTTP {status_code} for voice_id={voice_id}. "
-            "Use a valid ElevenLabs voice ID, not an agent ID, and check ElevenLabs quota/billing/access. "
-            f"Response: {response_text}"
-        ) from exc
+    if response.status_code != 200:
+        detail = _json_detail(response)
+        code = str(detail.get("code") or "")
+
+        if code not in {"quota_exceeded", "paid_plan_required"} and response.status_code in _TRANSIENT_STATUS:
+            logger.warning("tts_transient_error", status=response.status_code)
+            raise TransientTTSError(f"elevenlabs returned {response.status_code}")
+
+        _raise_api_error(response, voice_id)
+
     return response.content
 
 

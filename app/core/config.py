@@ -249,12 +249,26 @@ class Settings:
         )
         self.ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2")
 
-        # Vector DB: Qdrant Cloud + FastEmbed (ONNX) embeddings
+        # Vector DB / RAG grounding. Qdrant settings are kept for the older
+        # cloud path; Sprint 2's integrated retriever currently uses Chroma.
         self.QDRANT_URL = os.getenv("QDRANT_URL", "")
         self.QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
         self.QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "edu_docs")
         self.EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
         self.EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))
+        self.RAG_ENABLED = os.getenv("RAG_ENABLED", "true").lower() in ("true", "1", "t", "yes")
+        self.RAG_CHROMA_PERSIST_DIR = os.getenv("RAG_CHROMA_PERSIST_DIR") or os.getenv("CHROMA_PERSIST_DIR", ".chroma")
+        self.RAG_CHROMA_COLLECTION = os.getenv("RAG_CHROMA_COLLECTION") or os.getenv(
+            "CHROMA_COLLECTION", "technical_docs"
+        )
+        self.RAG_TOP_K = int(os.getenv("RAG_TOP_K", os.getenv("DEFAULT_TOP_K", "5")))
+        self.RAG_SIMILARITY_THRESHOLD = float(
+            os.getenv("RAG_SIMILARITY_THRESHOLD", os.getenv("DEFAULT_SIMILARITY_THRESHOLD", "0.35"))
+        )
+        self.RAG_SOURCE = os.getenv("RAG_SOURCE", "")
+        self.RAG_VERSION = os.getenv("RAG_VERSION", "")
+        self.RAG_DOC_TYPE = os.getenv("RAG_DOC_TYPE", "")
+        self.HF_TOKEN = os.getenv("HF_TOKEN", "")
 
         # Pipeline storage / outputs (job state, audio, rendered video)
         self.VIDEO_DATA_DIR = Path(os.getenv("VIDEO_DATA_DIR", "./data"))

@@ -5,7 +5,7 @@ from typing import Any, cast
 from langgraph.graph import END, START, StateGraph
 from typing_extensions import NotRequired, TypedDict
 
-from rag_tool.tool_definition import retrieve_technical_docs
+from app.services.rag.tool.tool_definition import retrieve_technical_docs
 
 
 class ResearchAgentState(TypedDict):

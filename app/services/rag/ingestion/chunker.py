@@ -7,7 +7,7 @@ from typing import Any, Final
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from rag_tool.metadata import ChunkMetadata, DocumentMetadata
+from app.services.rag.tool.metadata import ChunkMetadata, DocumentMetadata
 
 DEFAULT_CHUNK_SIZE: Final[int] = 900
 DEFAULT_CHUNK_OVERLAP: Final[int] = 150

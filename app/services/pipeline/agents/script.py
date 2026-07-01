@@ -12,7 +12,8 @@ _SYSTEM = (
     "You are a scriptwriter for short educational coding videos. "
     "The narration is read aloud as a voiceover synced to code being typed and run on screen. "
     "Return only the final spoken narration. Never include analysis, reasoning, drafts, checks, "
-    "self-corrections, word counts, prompt restatement, headings, stage directions, or markdown."
+    "self-corrections, word counts, token-by-token breakdowns, evaluation checklists, "
+    "prompt restatement, headings, stage directions, or markdown."
 )
 
 
@@ -35,9 +36,13 @@ def generate_script(llm: PipelineLLM, topic: str, research_notes: str, code: str
         f"The on-screen code is:\n```python\n{code}\n```\n\n"
         "Write a spoken narration (120-200 words) that walks the viewer through typing and running this "
         "code, explaining what each part does and what the output means. "
+        "For TTS clarity, explain raw Python references in natural English instead of reading symbols: "
+        "say 'length of array' instead of 'len(arr)', 'element j' instead of 'arr[j]', "
+        "'element j plus 1' instead of 'arr[j+1]', and 'copy of data' instead of 'data.copy()'. "
         f"{_language_rule(language)} "
         "Return only the narration text. Do not include headings, stage directions, markdown, analysis, "
-        "reasoning, drafts, checks, self-corrections, word counts, or prompt restatement."
+        "reasoning, drafts, revised-draft headings, checks, self-corrections, word counts, "
+        "numbered token-by-token breakdowns, evaluation checklists, or prompt restatement."
     )
     raw_script = llm.complete(stage="script", system=_SYSTEM, user=user)
     return ensure_clean_narration(

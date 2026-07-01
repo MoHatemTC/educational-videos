@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy pyproject.toml first to leverage Docker cache
 COPY pyproject.toml .
-RUN uv venv && . .venv/bin/activate && uv pip install -e .
+RUN uv venv && . .venv/bin/activate && uv pip install -e ".[rag]"
 
 # Install Playwright's own Chromium + OS libs (web-explainer mode). Downstream of
 # dep install so it only re-runs on a playwright bump. World-readable so the
