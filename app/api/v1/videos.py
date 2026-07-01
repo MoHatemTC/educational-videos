@@ -1,9 +1,10 @@
 """Educational-video generation API.
 
-Job lifecycle: ``POST /jobs`` runs the generation pipeline to the HITL gate as a
-background task; the client polls ``GET /jobs/{id}``; a reviewer fetches
-``/review``, then ``/approve`` (resumes render) or ``/reject``; the finished MP4
-is served from ``/result`` and per-stage cost/latency from ``/traces``.
+Job lifecycle: ``POST /jobs`` persists a tracking row and enqueues generation
+onto the configured video task queue. The client polls ``GET /jobs/{id}``; a
+reviewer fetches ``/review``, then ``/approve`` (resumes the graph and enqueues
+render) or ``/reject``; the finished MP4 is served from ``/result`` and
+per-stage cost/latency from ``/traces``.
 
 NOTE: slowapi's ``@limiter.limit`` is incompatible with FastAPI 0.121's router
 internals (``_IncludedRouter`` has no ``.path``), so these routes are not
@@ -30,7 +31,8 @@ from app.schemas.video import (
     ReviewArtifact,
     TraceRow,
 )
-from app.services.pipeline.orchestrator import approve_generation, reject_generation, run_generation, run_render
+from app.services.pipeline.orchestrator import approve_generation, reject_generation
+from app.services.pipeline.task_queue import enqueue_generation, enqueue_render
 from app.services.video_store import video_store
 
 router = APIRouter()
@@ -63,11 +65,23 @@ def _status(job: VideoJob) -> JobStatusResponse:
 
 @router.post("/jobs", response_model=JobCreateResponse, status_code=status.HTTP_202_ACCEPTED)
 async def create_job(body: JobRequest, background_tasks: BackgroundTasks) -> JobCreateResponse:
-    """Create a generation job and run it to the approval gate in the background."""
+    """Create a generation job and enqueue it on the configured task queue."""
     job_id = str(uuid.uuid4())
     video_store.create_job(job_id, topic=body.topic, language=body.language, mode=body.mode, url=body.url)
-    background_tasks.add_task(run_generation, job_id)
-    logger.info("video_job_enqueued", job_id=job_id, topic=body.topic, language=body.language, mode=body.mode)
+    try:
+        queued = enqueue_generation(job_id, background_tasks=background_tasks)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    logger.info(
+        "video_job_enqueued",
+        job_id=job_id,
+        topic=body.topic,
+        language=body.language,
+        mode=body.mode,
+        queue_backend=queued.backend,
+        queue_task_id=queued.task_id,
+    )
     return JobCreateResponse(job_id=job_id, status="pending")
 
 
@@ -183,9 +197,19 @@ async def approve_job(job_id: str, body: ApprovalRequest, background_tasks: Back
         merge["code"] = body.code
 
     updated = approve_generation(job_id, reviewer_edits=merge or None)
-    background_tasks.add_task(run_render, job_id)
-    logger.info("video_job_approved", job_id=job_id, edited=bool(merge))
-    return _status(updated or video_store.get_job(job_id) or job)
+    try:
+        queued = enqueue_render(job_id, background_tasks=background_tasks)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    logger.info(
+        "video_job_approved",
+        job_id=job_id,
+        edited=bool(merge),
+        queue_backend=queued.backend,
+        queue_task_id=queued.task_id,
+    )
+    return _status(video_store.get_job(job_id) or updated or job)
 
 
 @router.post("/jobs/{job_id}/reject", response_model=JobStatusResponse)

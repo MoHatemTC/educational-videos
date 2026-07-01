@@ -195,6 +195,23 @@ class Settings:
         self.VALKEY_MAX_CONNECTIONS = int(os.getenv("VALKEY_MAX_CONNECTIONS", "20"))
         self.CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "60"))
 
+        # Video task queue. ``background_tasks`` preserves one-process local dev;
+        # docker-compose.mvp.yml sets this to ``celery`` for decoupled workers.
+        valkey_host = self.VALKEY_HOST or "localhost"
+        valkey_auth = f":{self.VALKEY_PASSWORD}@" if self.VALKEY_PASSWORD else ""
+        default_task_queue_url = f"redis://{valkey_auth}{valkey_host}:{self.VALKEY_PORT}/{self.VALKEY_DB}"
+        self.VIDEO_TASK_QUEUE_BACKEND = os.getenv("VIDEO_TASK_QUEUE_BACKEND", "background_tasks").lower()
+        self.VIDEO_TASK_QUEUE_BROKER_URL = (
+            os.getenv("VIDEO_TASK_QUEUE_BROKER_URL") or os.getenv("CELERY_BROKER_URL") or default_task_queue_url
+        )
+        self.VIDEO_TASK_QUEUE_RESULT_BACKEND = (
+            os.getenv("VIDEO_TASK_QUEUE_RESULT_BACKEND")
+            or os.getenv("CELERY_RESULT_BACKEND")
+            or self.VIDEO_TASK_QUEUE_BROKER_URL
+        )
+        self.VIDEO_TASK_QUEUE_MAX_RETRIES = int(os.getenv("VIDEO_TASK_QUEUE_MAX_RETRIES", "2"))
+        self.VIDEO_TASK_QUEUE_VISIBILITY_TIMEOUT = int(os.getenv("VIDEO_TASK_QUEUE_VISIBILITY_TIMEOUT", "3600"))
+
         # Rate Limiting Configuration
         self.RATE_LIMIT_DEFAULT = parse_list_from_env("RATE_LIMIT_DEFAULT", ["200 per day", "50 per hour"])
 

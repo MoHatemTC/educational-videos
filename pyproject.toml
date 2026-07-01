@@ -55,6 +55,8 @@ dependencies = [
     "imageio-ffmpeg>=0.6.0",
     "elevenlabs>=2.54.0",
     "deepeval>=3.0.0",
+    "celery>=5.5.0",
+    "redis>=7.4.0",
 ]
 
 [project.optional-dependencies]
