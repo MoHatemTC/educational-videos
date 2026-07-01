@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Sequence
 
 from app.core.logging import logger
-from app.services.pipeline.evaluation import PipelineEvalCase, evaluate_cases
+from app.services.pipeline.evaluation import EvalBackend, PipelineEvalCase, evaluate_cases
 
 _JUDGE_KEY_ENV_VARS = ("OPENAI_API_KEY", "PIPELINE_EVAL_API_KEY", "LITELLM_API_KEY")
 
@@ -19,7 +19,7 @@ def _has_llm_judge_key() -> bool:
     return any(os.getenv(name, "").strip() for name in _JUDGE_KEY_ENV_VARS)
 
 
-def _resolve_backend(backend: str) -> str:
+def _resolve_backend(backend: str) -> EvalBackend:
     """Return heuristic when DeepEval is requested but no LLM judge key exists.
 
     Lets the gate still run (e.g. in CI without secrets) instead of erroring.
@@ -28,7 +28,7 @@ def _resolve_backend(backend: str) -> str:
     if backend == "deepeval" and not _has_llm_judge_key():
         logger.warning("pipeline_eval_no_judge_key_using_heuristic", requested_backend=backend)
         return "heuristic"
-    return backend
+    return "deepeval" if backend == "deepeval" else "heuristic"
 
 
 def load_cases(path: str | Path) -> tuple[PipelineEvalCase, ...]:
