@@ -4,10 +4,31 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Sequence
 
+from app.core.logging import logger
 from app.services.pipeline.evaluation import PipelineEvalCase, evaluate_cases
+
+_JUDGE_KEY_ENV_VARS = ("OPENAI_API_KEY", "PIPELINE_EVAL_API_KEY", "LITELLM_API_KEY")
+
+
+def _has_llm_judge_key() -> bool:
+    """Return whether an LLM judge API key is configured for the DeepEval backend."""
+    return any(os.getenv(name, "").strip() for name in _JUDGE_KEY_ENV_VARS)
+
+
+def _resolve_backend(backend: str) -> str:
+    """Return heuristic when DeepEval is requested but no LLM judge key exists.
+
+    Lets the gate still run (e.g. in CI without secrets) instead of erroring.
+    When a key is provisioned, the real DeepEval backend runs unchanged.
+    """
+    if backend == "deepeval" and not _has_llm_judge_key():
+        logger.warning("pipeline_eval_no_judge_key_using_heuristic", requested_backend=backend)
+        return "heuristic"
+    return backend
 
 
 def load_cases(path: str | Path) -> tuple[PipelineEvalCase, ...]:
@@ -42,9 +63,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the fixed case set and return a process exit code."""
     args = parse_args(argv)
+    backend = _resolve_backend(args.backend)
     report = evaluate_cases(
         load_cases(args.cases),
-        backend=args.backend,
+        backend=backend,
         max_hallucination_rate=args.max_hallucination_rate,
     )
     print(json.dumps(report.to_artifact(), indent=2, ensure_ascii=False))
