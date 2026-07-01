@@ -30,7 +30,7 @@ from app.schemas.video import (
     ReviewArtifact,
     TraceRow,
 )
-from app.services.pipeline.orchestrator import run_generation, run_render
+from app.services.pipeline.orchestrator import approve_generation, reject_generation, run_generation, run_render
 from app.services.video_store import video_store
 
 router = APIRouter()
@@ -171,7 +171,7 @@ async def get_review(job_id: str) -> ReviewArtifact:
 
 @router.post("/jobs/{job_id}/approve", response_model=JobStatusResponse)
 async def approve_job(job_id: str, body: ApprovalRequest, background_tasks: BackgroundTasks) -> JobStatusResponse:
-    """Approve a job (optionally with edits) and dispatch the render stage."""
+    """Approve a job, resume its paused graph checkpoint, and dispatch rendering."""
     job = _job_or_404(job_id)
     if not job.awaiting_approval:
         raise HTTPException(status_code=409, detail=f"job {job_id} is not awaiting approval (status={job.status})")
@@ -182,33 +182,19 @@ async def approve_job(job_id: str, body: ApprovalRequest, background_tasks: Back
     if body.code is not None:
         merge["code"] = body.code
 
-    updated = video_store.update_job(
-        job_id,
-        status="approved",
-        current_step="approved",
-        awaiting_approval=False,
-        review_status="approved",
-        artifacts_merge=merge or None,
-    )
+    updated = approve_generation(job_id, reviewer_edits=merge or None)
     background_tasks.add_task(run_render, job_id)
     logger.info("video_job_approved", job_id=job_id, edited=bool(merge))
-    return _status(updated or job)
+    return _status(updated or video_store.get_job(job_id) or job)
 
 
 @router.post("/jobs/{job_id}/reject", response_model=JobStatusResponse)
 async def reject_job(job_id: str, body: RejectionRequest) -> JobStatusResponse:
-    """Reject a job at the approval gate; nothing further is dispatched."""
+    """Reject a job at the approval gate and resume the graph with that decision."""
     job = _job_or_404(job_id)
-    updated = video_store.update_job(
-        job_id,
-        status="rejected",
-        current_step="rejected",
-        awaiting_approval=False,
-        review_status="rejected",
-        error_message=body.reason,
-    )
+    updated = reject_generation(job_id, reason=body.reason)
     logger.info("video_job_rejected", job_id=job_id, reason=body.reason)
-    return _status(updated or job)
+    return _status(updated or video_store.get_job(job_id) or job)
 
 
 @router.get("/jobs/{job_id}/result")
