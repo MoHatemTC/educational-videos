@@ -113,7 +113,7 @@ def _generate_code_tutorial(job_id: str, job: VideoJob, llm: PipelineLLM) -> Non
         },
     )
 
-    script = generate_script(llm, job.topic, research_notes, code, job.language)
+    script = generate_script(llm, job.topic, research_notes, code, job.language, grounding_context=prompt_context)
     video_store.update_job(job_id, current_step="timeline", artifacts_merge={"script": script})
 
     timeline: dict | None

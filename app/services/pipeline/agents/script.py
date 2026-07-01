@@ -28,12 +28,24 @@ def _language_rule(language: str) -> str:
     return "Write the narration in clear, friendly English."
 
 
-def generate_script(llm: PipelineLLM, topic: str, research_notes: str, code: str, language: str = "en") -> str:
+def generate_script(
+    llm: PipelineLLM,
+    topic: str,
+    research_notes: str,
+    code: str,
+    language: str = "en",
+    grounding_context: str | None = None,
+) -> str:
     """Return a 120-200 word spoken narration that walks through the code."""
+    context_block = grounding_context or "No retrieved documentation context is available."
     user = (
         f"Topic: {topic}\n\n"
         f"Key teaching points:\n{research_notes}\n\n"
         f"The on-screen code is:\n```python\n{code}\n```\n\n"
+        "Retrieved documentation context with citations:\n"
+        f"{context_block}\n\n"
+        "Keep explanations consistent with the retrieved context and do not state unsupported technical "
+        "claims. Do NOT read citations or source numbers aloud in the narration. "
         "Write a spoken narration (120-200 words) that walks the viewer through typing and running this "
         "code, explaining what each part does and what the output means. "
         "For TTS clarity, explain raw Python references in natural English instead of reading symbols: "
