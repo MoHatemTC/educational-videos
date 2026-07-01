@@ -9,6 +9,7 @@ dependencies = [
     "langchain>=1.0.5",
     "langchain-core>=1.0.4",
     "langchain-openai>=1.0.2",
+    "litellm>=1.79.0",
     "langfuse==3.9.1",
     "langgraph>=1.0.2",
     "langgraph-checkpoint-postgres>=3.0.1",
@@ -53,6 +54,7 @@ dependencies = [
     "anthropic>=0.112.0",
     "imageio-ffmpeg>=0.6.0",
     "elevenlabs>=2.54.0",
+    "deepeval>=3.0.0",
 ]
 
 [project.optional-dependencies]

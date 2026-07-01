@@ -22,6 +22,7 @@ from app.core.prompt_chain import convert_script_to_timeline
 from app.models.video_job import VideoJob
 from app.services.pipeline.agents import generate_code, generate_script, research_topic
 from app.services.pipeline.llm import PipelineLLM
+from app.services.pipeline.evaluation import evaluate_pipeline_artifacts
 from app.services.pipeline.narration_guard import clean_narration_text
 from app.services.pipeline.rag import retrieve_grounding_context
 from app.services.pipeline.render.ffmpeg_render import assemble_video
@@ -114,7 +115,17 @@ def _generate_code_tutorial(job_id: str, job: VideoJob, llm: PipelineLLM) -> Non
     )
 
     script = generate_script(llm, job.topic, research_notes, code, job.language, grounding_context=prompt_context)
-    video_store.update_job(job_id, current_step="timeline", artifacts_merge={"script": script})
+    pipeline_eval_scores = evaluate_pipeline_artifacts(
+        topic=job.topic,
+        code=code,
+        script=script,
+        rag_context=grounding.to_artifact(),
+    )
+    video_store.update_job(
+        job_id,
+        current_step="timeline",
+        artifacts_merge={"script": script, "pipeline_eval_scores": pipeline_eval_scores},
+    )
 
     timeline: dict | None
     timeline_error: str | None
