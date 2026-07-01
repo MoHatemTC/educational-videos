@@ -227,7 +227,7 @@ class Settings:
 
         # Pipeline evaluation / hallucination gate.
         self.PIPELINE_EVAL_BACKEND = os.getenv("PIPELINE_EVAL_BACKEND", "deepeval")
-        self.PIPELINE_EVAL_MODEL = os.getenv("PIPELINE_EVAL_MODEL", "")
+        self.PIPELINE_EVAL_MODEL = os.getenv("PIPELINE_EVAL_MODEL", "openai/FW-Kimi-K2.6")
         self.PIPELINE_EVAL_MAX_HALLUCINATION_RATE = float(os.getenv("PIPELINE_EVAL_MAX_HALLUCINATION_RATE", "0.05"))
         self.PIPELINE_EVAL_FAITHFULNESS_THRESHOLD = float(os.getenv("PIPELINE_EVAL_FAITHFULNESS_THRESHOLD", "0.95"))
         self.PIPELINE_EVAL_RELEVANCY_THRESHOLD = float(os.getenv("PIPELINE_EVAL_RELEVANCY_THRESHOLD", "0.60"))

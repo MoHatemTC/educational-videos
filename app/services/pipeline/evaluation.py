@@ -8,21 +8,13 @@ configurable, but CI uses the DeepEval backend to satisfy the PRD gate.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from importlib import import_module
 import os
 import re
-from typing import Any, Iterable, Literal
-from importlib import import_module
-from typing import cast
+from typing import Any, Iterable, Literal, cast
 
 from app.core.config import settings
 from app.core.logging import logger
-
-# deepeval import
-metrics_module = cast(Any, import_module("deepeval.metrics"))
-test_case_module = cast(Any, import_module("deepeval.test_case"))
-faithfulness_cls = metrics_module.FaithfulnessMetric
-answer_relevancy_cls = metrics_module.AnswerRelevancyMetric
-test_case_cls = test_case_module.LLMTestCase
 
 EvalBackend = Literal["deepeval", "heuristic"]
 
@@ -30,6 +22,7 @@ _WORD_RE = re.compile(r"[\w]+", re.UNICODE)
 _DEFAULT_MAX_HALLUCINATION_RATE = 0.05
 _DEFAULT_FAITHFULNESS_THRESHOLD = 0.95
 _DEFAULT_RELEVANCY_THRESHOLD = 0.60
+_DEFAULT_EVAL_MODEL = "openai/FW-Kimi-K2.6"
 
 
 @dataclass(frozen=True)
@@ -217,10 +210,10 @@ def _evaluate_with_deepeval(
     """Evaluate a case with DeepEval faithfulness and answer relevancy metrics."""
     metrics_module = cast(Any, import_module("deepeval.metrics"))
     test_case_module = cast(Any, import_module("deepeval.test_case"))
-
     faithfulness_cls = metrics_module.FaithfulnessMetric
     answer_relevancy_cls = metrics_module.AnswerRelevancyMetric
     test_case_cls = test_case_module.LLMTestCase
+
     test_case = test_case_cls(
         input=case.input,
         actual_output=case.actual_output,
@@ -230,7 +223,7 @@ def _evaluate_with_deepeval(
     common_kwargs: dict[str, Any] = {"include_reason": True}
     faithfulness_kwargs = {**common_kwargs, "threshold": faithfulness_threshold}
     answer_kwargs = {**common_kwargs, "threshold": relevancy_threshold}
-    if model:
+    if model is not None:
         faithfulness_kwargs["model"] = model
         answer_kwargs["model"] = model
 
@@ -302,6 +295,51 @@ def _evaluate_with_heuristics(
     )
 
 
+def _deepeval_model() -> Any | None:
+    """Build the DeepEval judge model through LiteLLM when configured."""
+    model_name = _deepeval_model_name()
+    if not model_name:
+        return None
+
+    models_module = cast(Any, import_module("deepeval.models"))
+    litellm_model_cls = models_module.LiteLLMModel
+    model_kwargs: dict[str, Any] = {
+        "model": _provider_prefixed_model_name(model_name),
+        "temperature": 0,
+    }
+    api_key = _optional_env("LITELLM_API_KEY") or _optional_env("LITELLM_PROXY_API_KEY")
+    base_url = (
+        _optional_env("LITELLM_API_BASE")
+        or _optional_env("LITELLM_PROXY_API_BASE")
+        or _optional_env("LITELLM_BASE_URL")
+    )
+    if api_key:
+        model_kwargs["api_key"] = api_key
+    if base_url:
+        model_kwargs["base_url"] = base_url
+    return litellm_model_cls(**model_kwargs)
+
+
+def _deepeval_model_name() -> str:
+    """Return the configured DeepEval judge model name."""
+    return str(
+        os.getenv("PIPELINE_EVAL_MODEL") or getattr(settings, "PIPELINE_EVAL_MODEL", "") or _DEFAULT_EVAL_MODEL
+    ).strip()
+
+
+def _provider_prefixed_model_name(model_name: str) -> str:
+    """Ensure LiteLLM receives a provider-prefixed model name."""
+    stripped = model_name.strip()
+    if "/" in stripped:
+        return stripped
+    return f"openai/{stripped}"
+
+
+def _optional_env(name: str) -> str:
+    """Return a stripped environment variable value or an empty string."""
+    return os.getenv(name, "").strip()
+
+
 def _score_from_metric(metric: Any) -> float:
     """Read a bounded numeric score from a DeepEval metric instance."""
     value = getattr(metric, "score", 0.0)
@@ -371,11 +409,6 @@ def _faithfulness_threshold() -> float:
 def _relevancy_threshold() -> float:
     """Return the minimum acceptable answer relevancy score."""
     return float(getattr(settings, "PIPELINE_EVAL_RELEVANCY_THRESHOLD", _DEFAULT_RELEVANCY_THRESHOLD))
-
-
-def _deepeval_model() -> str:
-    """Return an optional DeepEval judge model name."""
-    return str(getattr(settings, "PIPELINE_EVAL_MODEL", os.getenv("PIPELINE_EVAL_MODEL", ""))).strip()
 
 
 def _contains_phrase(text: str, phrase: str) -> bool:

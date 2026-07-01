@@ -34,9 +34,10 @@ jobs:
         run: uv run pytest -q
       - name: Pipeline DeepEval hallucination gate
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || secrets.LITELLM_API_KEY }}
-          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL || vars.LITELLM_BASE_URL }}
-          PIPELINE_EVAL_MODEL: ${{ vars.PIPELINE_EVAL_MODEL }}
+          LITELLM_API_KEY: ${{ secrets.LITELLM_API_KEY }}
+          LITELLM_API_BASE: ${{ vars.LITELLM_BASE_URL || 'https://management.sprints.ai/litellm' }}
+          LITELLM_BASE_URL: ${{ vars.LITELLM_BASE_URL || 'https://management.sprints.ai/litellm' }}
+          PIPELINE_EVAL_MODEL: ${{ vars.PIPELINE_EVAL_MODEL || 'openai/FW-Kimi-K2.6' }}
           PIPELINE_EVAL_BACKEND: deepeval
+          DEEPEVAL_TELEMETRY_OPT_OUT: '1'
         run: uv run python -m evals.pipeline_eval --backend deepeval --max-hallucination-rate 0.05
-

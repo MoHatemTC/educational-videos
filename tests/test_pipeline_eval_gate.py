@@ -128,6 +128,7 @@ def test_deepeval_backend_uses_deepeval_metrics(monkeypatch: pytest.MonkeyPatch)
         raise AssertionError(f"unexpected import: {name}")
 
     monkeypatch.setattr(evaluation, "import_module", _fake_import_module)
+    monkeypatch.setattr(evaluation, "_deepeval_model", lambda: None)
     case = PipelineEvalCase(
         name="deepeval_mock",
         input="Python range loop",
@@ -141,3 +142,33 @@ def test_deepeval_backend_uses_deepeval_metrics(monkeypatch: pytest.MonkeyPatch)
     assert result.passed is True
     assert result.hallucination_score <= 0.05
     assert measured == ["faithfulness:Python range loop", "relevancy:Python range loop"]
+
+
+def test_deepeval_model_uses_litellm_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
+    """DeepEval judge model should be routed through LiteLLM, not native OpenAI."""
+    created: dict[str, Any] = {}
+
+    class _FakeLiteLLMModel:
+        """Tiny stand-in for DeepEval's LiteLLMModel."""
+
+        def __init__(self, **kwargs: Any) -> None:
+            created.update(kwargs)
+
+    def _fake_import_module(name: str) -> Any:
+        if name == "deepeval.models":
+            return SimpleNamespace(LiteLLMModel=_FakeLiteLLMModel)
+        raise AssertionError(f"unexpected import: {name}")
+
+    monkeypatch.setenv("PIPELINE_EVAL_MODEL", "FW-Kimi-K2.6")
+    monkeypatch.setenv("LITELLM_API_KEY", "test-litellm-key")
+    monkeypatch.setenv("LITELLM_BASE_URL", "https://management.sprints.ai/litellm")
+    monkeypatch.setattr(evaluation, "import_module", _fake_import_module)
+
+    evaluation._deepeval_model()  # noqa: SLF001 - verifies internal DeepEval adapter wiring
+
+    assert created == {
+        "model": "openai/FW-Kimi-K2.6",
+        "temperature": 0,
+        "api_key": "test-litellm-key",
+        "base_url": "https://management.sprints.ai/litellm",
+    }
