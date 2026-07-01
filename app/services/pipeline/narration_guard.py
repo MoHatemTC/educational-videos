@@ -51,8 +51,8 @@ _META_MARKERS: tuple[str, ...] = (
     "covered.",
     "return only",
     "final answer",
-    "analysis",
-    "reasoning",
+    "analysis:",
+    "reasoning:",
     "prompt:",
     "system prompt",
     "developer instruction",
@@ -64,7 +64,9 @@ _META_MARKERS: tuple[str, ...] = (
 )
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
-_INDEXED_REFERENCE_RE = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\[\s*(?P<index>[^\[\]\n]+?)\s*\]")
+# No whitespace allowed before "[" so code refs (arr[j]) are rewritten but
+# prose brackets (item [1], citations [1]) are left untouched.
+_INDEXED_REFERENCE_RE = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\[\s*(?P<index>[^\[\]\n]+?)\s*\]")
 _LEN_CALL_RE = re.compile(r"\blen\s*\(\s*(?P<arg>[^()\n]+?)\s*\)")
 _COPY_CALL_RE = re.compile(r"\b(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*copy\s*\(\s*\)")
 _FENCE_RE = re.compile(r"```(?:text|markdown|arabic|python)?\s*\n(?P<body>.*?)\n```", re.IGNORECASE | re.DOTALL)
@@ -79,7 +81,9 @@ _WORD_COUNT_NOTE_RE = re.compile(
     re.IGNORECASE,
 )
 _CHECKLIST_NOTE_RE = re.compile(r"^\s*-\s+.*(?:->|yes,|no,).*$", re.IGNORECASE)
-_COUNTED_TOKEN_RE = re.compile(r"\(\d+\)|\b\d+\.")
+# Only parenthesized counters "word (1) word (2)" — not bare decimals like
+# "3.14", which are legitimate in English narration.
+_COUNTED_TOKEN_RE = re.compile(r"\(\d+\)")
 
 _REPAIR_SYSTEM = (
     "You clean text for a text-to-speech narration pipeline. "

@@ -261,7 +261,9 @@ class Settings:
         self.RAG_CHROMA_COLLECTION = os.getenv("RAG_CHROMA_COLLECTION") or os.getenv(
             "CHROMA_COLLECTION", "technical_docs"
         )
-        self.RAG_TOP_K = int(os.getenv("RAG_TOP_K", os.getenv("DEFAULT_TOP_K", "5")))
+        # Clamp to the RAG tool's accepted range (1..20) so an out-of-range env
+        # value degrades gracefully instead of raising at startup.
+        self.RAG_TOP_K = max(1, min(20, int(os.getenv("RAG_TOP_K", os.getenv("DEFAULT_TOP_K", "5")))))
         self.RAG_SIMILARITY_THRESHOLD = float(
             os.getenv("RAG_SIMILARITY_THRESHOLD", os.getenv("DEFAULT_SIMILARITY_THRESHOLD", "0.35"))
         )

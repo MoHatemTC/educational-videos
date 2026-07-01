@@ -118,3 +118,13 @@ All good. No Arabic transliteration like
     assert "Let me count" not in cleaned
     assert "(1)" not in cleaned
     assert "About 133 words" not in cleaned
+
+
+def test_clean_narration_preserves_plain_english_prose() -> None:
+    """Legitimate English narration must survive the guards unchanged."""
+    text = (
+        "First we run a quick statistical analysis of the data. "
+        "The values 3.14, 2.71, 1.62, 4.20, 5.55, and 6.28 are averaged. "
+        "See reference [1] for how we reason about the result."
+    )
+    assert clean_narration_text(text, "en") == text
