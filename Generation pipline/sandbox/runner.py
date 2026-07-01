@@ -130,7 +130,7 @@ class SandboxRunner:
                 text=True,
                 timeout=self.config.timeout_seconds,
                 preexec_fn=preexec,
-                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+                env=self._safe_env(),
             )
             elapsed = time.perf_counter() - t0
             stdout = proc.stdout[: self.config.max_output_bytes]
@@ -159,6 +159,21 @@ class SandboxRunner:
             duration_seconds=elapsed,
             code=code,
         )
+
+    @staticmethod
+    def _safe_env() -> dict[str, str]:
+        """Build a minimal environment for the sandboxed subprocess.
+
+        Only benign, non-secret variables are forwarded. The full host
+        environment (which may hold ANTHROPIC_API_KEY, ELEVENLABS_API_KEY, etc.)
+        must never reach model-generated code.
+        """
+        allowed = ("PATH", "SYSTEMROOT", "SystemRoot", "TEMP", "TMP", "TMPDIR", "LANG", "LC_ALL", "TZ")
+        env = {key: os.environ[key] for key in allowed if key in os.environ}
+        env["PYTHONUNBUFFERED"] = "1"
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        env["PYTHONNOUSERSITE"] = "1"
+        return env
 
     @staticmethod
     def _build_preexec():
