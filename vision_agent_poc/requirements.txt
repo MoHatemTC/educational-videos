@@ -1,6 +1,0 @@
-# Vision-based UI Agent PoC — dependencies
-# Pinned to the version this PoC was verified against. browser-use 0.12 drives
-# Chromium over CDP (no bundled Playwright CLI); the Docker image provides the
-# Chromium binary.
-browser-use==0.12.9
-python-dotenv>=1.0.1
