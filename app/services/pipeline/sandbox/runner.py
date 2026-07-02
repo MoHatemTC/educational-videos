@@ -1,24 +1,26 @@
-"""Resource-limited subprocess runner for untrusted generated code.
+"""Resource-limited runner for untrusted generated code.
 
-Runs a Python snippet in a child process with CPU-time and address-space
-(memory) rlimits and a wall-clock timeout. Captures stdout/stderr/exit code into
-a typed ``ExecutionResult``.
-
-LIMITATION (MVP): outbound network is NOT hard-blocked here — a subprocess can
-still open sockets. The code we run is stdlib-only Kimi output, and CPU/memory/
-wall-clock are enforced. A fully isolated sandbox (Docker/nsjail network ns) is a
-productization item.
+Default local mode runs a Python snippet in a subprocess with CPU-time and
+address-space rlimits where the platform supports them. For hardened deployments,
+``SANDBOX_BACKEND=docker`` runs the snippet in a throwaway container with
+``--network none``, memory/PID limits, and a read-only filesystem.
 """
+
+from __future__ import annotations
 
 import importlib
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, cast
+
+from app.core.config import settings
 
 
 @dataclass
@@ -61,6 +63,108 @@ def _limits(cpu_seconds: int, memory_mb: int) -> Callable[[], None] | None:
     return _apply
 
 
+def _minimal_env() -> dict[str, str]:
+    """Return an environment without user secrets or proxy/API keys."""
+    return {"PATH": os.environ.get("PATH", ""), "PYTHONUNBUFFERED": "1", "PYTHONDONTWRITEBYTECODE": "1"}
+
+
+def _run_subprocess(
+    script_path: str,
+    work_dir: str,
+    *,
+    timeout_s: int,
+    cpu_seconds: int,
+    memory_mb: int,
+) -> ExecutionResult:
+    """Execute a snippet with the local Python interpreter."""
+    started = time.monotonic()
+    try:
+        proc = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            preexec_fn=_limits(cpu_seconds, memory_mb),
+            env=_minimal_env(),
+            cwd=work_dir,
+        )
+        return ExecutionResult(
+            exit_code=proc.returncode,
+            stdout=proc.stdout,
+            stderr=proc.stderr,
+            timed_out=False,
+            runtime_s=round(time.monotonic() - started, 3),
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = _to_text(exc.stdout)
+        stderr = _to_text(exc.stderr)
+        return ExecutionResult(
+            exit_code=-1,
+            stdout=stdout,
+            stderr=f"{stderr}\n[killed: exceeded {timeout_s}s wall-clock timeout]",
+            timed_out=True,
+            runtime_s=round(time.monotonic() - started, 3),
+        )
+
+
+def _run_docker(script_path: str, work_dir: str, *, timeout_s: int, memory_mb: int) -> ExecutionResult:
+    """Execute a snippet inside Docker with networking disabled."""
+    docker = shutil.which("docker")
+    if docker is None:
+        return ExecutionResult(
+            exit_code=127,
+            stdout="",
+            stderr="docker sandbox requested but docker executable was not found",
+            timed_out=False,
+            runtime_s=0.0,
+        )
+
+    mount_dir = Path(work_dir).resolve()
+    cmd = [
+        docker,
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--memory",
+        f"{memory_mb}m",
+        "--cpus",
+        "1",
+        "--pids-limit",
+        "64",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=32m",
+        "-v",
+        f"{mount_dir.as_posix()}:/sandbox:ro",
+        "-w",
+        "/sandbox",
+        settings.SANDBOX_DOCKER_IMAGE,
+        "python",
+        Path(script_path).name,
+    ]
+    started = time.monotonic()
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s, env=_minimal_env())
+        return ExecutionResult(
+            exit_code=proc.returncode,
+            stdout=proc.stdout,
+            stderr=proc.stderr,
+            timed_out=False,
+            runtime_s=round(time.monotonic() - started, 3),
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = _to_text(exc.stdout)
+        stderr = _to_text(exc.stderr)
+        return ExecutionResult(
+            exit_code=-1,
+            stdout=stdout,
+            stderr=f"{stderr}\n[docker sandbox killed: exceeded {timeout_s}s wall-clock timeout]",
+            timed_out=True,
+            runtime_s=round(time.monotonic() - started, 3),
+        )
+
+
 def run_code(
     code: str,
     *,
@@ -68,13 +172,13 @@ def run_code(
     cpu_seconds: int = 10,
     memory_mb: int = 256,
 ) -> ExecutionResult:
-    """Execute ``code`` in a limited subprocess and capture the result.
+    """Execute ``code`` in the configured sandbox and capture the result.
 
     Args:
         code: Python source to run.
-        timeout_s: Wall-clock timeout; the process is killed past it.
-        cpu_seconds: RLIMIT_CPU for the child.
-        memory_mb: RLIMIT_AS (address space) for the child, in MiB.
+        timeout_s: Wall-clock timeout; the process/container is killed past it.
+        cpu_seconds: RLIMIT_CPU for subprocess mode on non-Windows platforms.
+        memory_mb: Memory limit in MiB.
 
     Returns:
         An ``ExecutionResult`` (never raises for normal failures/timeouts).
@@ -84,35 +188,12 @@ def run_code(
         with open(script_path, "w", encoding="utf-8") as handle:
             handle.write(code)
 
-        # Minimal env: keep PATH so the interpreter resolves, drop everything else
-        # (no API keys, no proxy config leaks into executed code).
-        env = {"PATH": os.environ.get("PATH", ""), "PYTHONUNBUFFERED": "1", "PYTHONDONTWRITEBYTECODE": "1"}
-
-        started = time.monotonic()
-        try:
-            proc = subprocess.run(
-                [sys.executable, script_path],
-                capture_output=True,
-                text=True,
-                timeout=timeout_s,
-                preexec_fn=_limits(cpu_seconds, memory_mb),
-                env=env,
-                cwd=work_dir,
-            )
-            return ExecutionResult(
-                exit_code=proc.returncode,
-                stdout=proc.stdout,
-                stderr=proc.stderr,
-                timed_out=False,
-                runtime_s=round(time.monotonic() - started, 3),
-            )
-        except subprocess.TimeoutExpired as exc:
-            stdout = _to_text(exc.stdout)
-            stderr = _to_text(exc.stderr)
-            return ExecutionResult(
-                exit_code=-1,
-                stdout=stdout,
-                stderr=f"{stderr}\n[killed: exceeded {timeout_s}s wall-clock timeout]",
-                timed_out=True,
-                runtime_s=round(time.monotonic() - started, 3),
-            )
+        if settings.SANDBOX_BACKEND == "docker":
+            return _run_docker(script_path, work_dir, timeout_s=timeout_s, memory_mb=memory_mb)
+        return _run_subprocess(
+            script_path,
+            work_dir,
+            timeout_s=timeout_s,
+            cpu_seconds=cpu_seconds,
+            memory_mb=memory_mb,
+        )

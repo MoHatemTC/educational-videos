@@ -1,6 +1,7 @@
-# Educational-Video MVP — minimal stack: FastAPI backend + Streamlit frontend.
-# Uses SQLite (job store) + Qdrant Cloud (vectors) + LiteLLM/Kimi + ElevenLabs,
-# so no local Postgres/Redis is needed. Secrets come from .env at runtime.
+# Educational-Video MVP — minimal stack: FastAPI backend + Celery worker +
+# Valkey queue + Streamlit frontend. SQLite remains the local job store; Valkey
+# only carries generation/render tasks so CPU/IO-heavy work stays out of the API
+# process.
 #
 #   docker compose -f docker-compose.mvp.yml up --build
 #   backend  -> http://localhost:8000/docs
@@ -9,6 +10,20 @@
 name: edu-video-mvp
 
 services:
+  valkey:
+    image: valkey/valkey:8.1.6-alpine
+    command: ["valkey-server", "--save", "60", "1", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: on-failure
+
   backend:
     build:
       context: .
@@ -20,20 +35,56 @@ services:
       - .env
     environment:
       - APP_ENV=development
+      - VALKEY_HOST=valkey
+      - VIDEO_TASK_QUEUE_BACKEND=celery
+      - VIDEO_TASK_QUEUE_BROKER_URL=redis://valkey:6379/0
+      - VIDEO_TASK_QUEUE_RESULT_BACKEND=redis://valkey:6379/0
     shm_size: "1gb"  # headless Chromium needs more than the default 64MB /dev/shm
     ports:
       - "8000:8000"
     volumes:
       - ./app:/app/app
-      - ./vlm_render_mapper:/app/vlm_render_mapper
       - ./data:/app/data
       - ./output:/app/output
+    depends_on:
+      valkey:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
+    restart: on-failure
+
+  worker:
+    image: edu-video-mvp:latest
+    entrypoint: []
+    command:
+      - /app/.venv/bin/celery
+      - -A
+      - app.services.pipeline.task_queue:celery_app
+      - worker
+      - --loglevel=INFO
+      - --concurrency=1
+      - -Q
+      - celery
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=development
+      - VALKEY_HOST=valkey
+      - VIDEO_TASK_QUEUE_BACKEND=celery
+      - VIDEO_TASK_QUEUE_BROKER_URL=redis://valkey:6379/0
+      - VIDEO_TASK_QUEUE_RESULT_BACKEND=redis://valkey:6379/0
+    shm_size: "1gb"
+    volumes:
+      - ./app:/app/app
+      - ./data:/app/data
+      - ./output:/app/output
+    depends_on:
+      valkey:
+        condition: service_healthy
     restart: on-failure
 
   frontend:
@@ -58,3 +109,6 @@ services:
     depends_on:
       - backend
     restart: on-failure
+
+volumes:
+  valkey-data:

@@ -1,25 +1,26 @@
 """Educational-video generation API.
 
-Job lifecycle: ``POST /jobs`` runs the generation pipeline to the HITL gate as a
-background task; the client polls ``GET /jobs/{id}``; a reviewer fetches
-``/review``, then ``/approve`` (resumes render) or ``/reject``; the finished MP4
-is served from ``/result`` and per-stage cost/latency from ``/traces``.
+Job lifecycle: ``POST /jobs`` persists a tracking row and enqueues generation
+onto the configured video task queue. The client polls ``GET /jobs/{id}``; a
+reviewer fetches ``/review``, then ``/approve`` (resumes the graph and enqueues
+render) or ``/reject``; the finished MP4 is served from ``/result`` and
+per-stage cost/latency from ``/traces``.
 
-NOTE: slowapi's ``@limiter.limit`` is incompatible with FastAPI 0.121's router
-internals (``_IncludedRouter`` has no ``.path``), so these routes are not
-decorated with it. Re-introduce rate limiting via a compatible mechanism during
-productization.
+Video routes use a lightweight FastAPI dependency for rate limiting because
+slowapi route decorators are not compatible with this router stack.
 """
 
 import asyncio
 import json
 import uuid
 from pathlib import Path
+from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from app.core.logging import logger
+from app.core.rate_limit import enforce_video_rate_limit
 from app.models.video_job import VideoJob
 from app.schemas.video import (
     ApprovalRequest,
@@ -30,10 +31,11 @@ from app.schemas.video import (
     ReviewArtifact,
     TraceRow,
 )
-from app.services.pipeline.orchestrator import run_generation, run_render
+from app.services.pipeline.orchestrator import approve_generation, reject_generation
+from app.services.pipeline.task_queue import enqueue_generation, enqueue_render
 from app.services.video_store import video_store
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_video_rate_limit)])
 
 
 def _job_or_404(job_id: str) -> VideoJob:
@@ -63,11 +65,35 @@ def _status(job: VideoJob) -> JobStatusResponse:
 
 @router.post("/jobs", response_model=JobCreateResponse, status_code=status.HTTP_202_ACCEPTED)
 async def create_job(body: JobRequest, background_tasks: BackgroundTasks) -> JobCreateResponse:
-    """Create a generation job and run it to the approval gate in the background."""
+    """Create a generation job and enqueue it on the configured task queue."""
     job_id = str(uuid.uuid4())
-    video_store.create_job(job_id, topic=body.topic, language=body.language, mode=body.mode, url=body.url)
-    background_tasks.add_task(run_generation, job_id)
-    logger.info("video_job_enqueued", job_id=job_id, topic=body.topic, language=body.language, mode=body.mode)
+    video_store.create_job(job_id, topic=body.resolved_topic(), language=body.language, mode=body.mode, url=body.url)
+    initial_artifacts: dict[str, Any] = {}
+    if raw_script := body.resolved_raw_script():
+        initial_artifacts.update({"raw_script": raw_script, "script": raw_script, "research": "supplied raw script"})
+    if body.tts_settings is not None:
+        initial_artifacts["tts_settings"] = body.tts_settings.model_dump(exclude_none=True)
+    if body.tts_segments is not None:
+        initial_artifacts["tts_segments"] = [segment.model_dump(exclude_none=True) for segment in body.tts_segments]
+    if body.vision_actions is not None:
+        initial_artifacts["vision_actions"] = [action.model_dump(exclude_none=True) for action in body.vision_actions]
+    if initial_artifacts:
+        video_store.update_job(job_id, artifacts_merge=initial_artifacts)
+
+    try:
+        queued = enqueue_generation(job_id, background_tasks=background_tasks)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    logger.info(
+        "video_job_enqueued",
+        job_id=job_id,
+        topic=body.resolved_topic(),
+        language=body.language,
+        mode=body.mode,
+        queue_backend=queued.backend,
+        queue_task_id=queued.task_id,
+    )
     return JobCreateResponse(job_id=job_id, status="pending")
 
 
@@ -171,7 +197,7 @@ async def get_review(job_id: str) -> ReviewArtifact:
 
 @router.post("/jobs/{job_id}/approve", response_model=JobStatusResponse)
 async def approve_job(job_id: str, body: ApprovalRequest, background_tasks: BackgroundTasks) -> JobStatusResponse:
-    """Approve a job (optionally with edits) and dispatch the render stage."""
+    """Approve a job, resume its paused graph checkpoint, and dispatch rendering."""
     job = _job_or_404(job_id)
     if not job.awaiting_approval:
         raise HTTPException(status_code=409, detail=f"job {job_id} is not awaiting approval (status={job.status})")
@@ -181,34 +207,36 @@ async def approve_job(job_id: str, body: ApprovalRequest, background_tasks: Back
         merge["script"] = body.script
     if body.code is not None:
         merge["code"] = body.code
+    if body.timeline is not None:
+        merge["timeline"] = body.timeline
+    if body.tts_settings is not None:
+        merge["tts_settings"] = body.tts_settings.model_dump(exclude_none=True)
+    if body.tts_segments is not None:
+        merge["tts_segments"] = [segment.model_dump(exclude_none=True) for segment in body.tts_segments]
 
-    updated = video_store.update_job(
-        job_id,
-        status="approved",
-        current_step="approved",
-        awaiting_approval=False,
-        review_status="approved",
-        artifacts_merge=merge or None,
+    updated = approve_generation(job_id, reviewer_edits=merge or None)
+    try:
+        queued = enqueue_render(job_id, background_tasks=background_tasks)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    logger.info(
+        "video_job_approved",
+        job_id=job_id,
+        edited=bool(merge),
+        queue_backend=queued.backend,
+        queue_task_id=queued.task_id,
     )
-    background_tasks.add_task(run_render, job_id)
-    logger.info("video_job_approved", job_id=job_id, edited=bool(merge))
-    return _status(updated or job)
+    return _status(video_store.get_job(job_id) or updated or job)
 
 
 @router.post("/jobs/{job_id}/reject", response_model=JobStatusResponse)
 async def reject_job(job_id: str, body: RejectionRequest) -> JobStatusResponse:
-    """Reject a job at the approval gate; nothing further is dispatched."""
+    """Reject a job at the approval gate and resume the graph with that decision."""
     job = _job_or_404(job_id)
-    updated = video_store.update_job(
-        job_id,
-        status="rejected",
-        current_step="rejected",
-        awaiting_approval=False,
-        review_status="rejected",
-        error_message=body.reason,
-    )
+    updated = reject_generation(job_id, reason=body.reason)
     logger.info("video_job_rejected", job_id=job_id, reason=body.reason)
-    return _status(updated or job)
+    return _status(updated or video_store.get_job(job_id) or job)
 
 
 @router.get("/jobs/{job_id}/result")
