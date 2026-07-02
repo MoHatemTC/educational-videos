@@ -57,6 +57,7 @@ dependencies = [
     "deepeval>=3.0.0",
     "celery>=5.5.0",
     "redis>=7.4.0",
+    "langgraph-checkpoint-sqlite>=2.0.0",
 ]
 
 [project.optional-dependencies]

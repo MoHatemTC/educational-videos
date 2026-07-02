@@ -9,11 +9,12 @@ interrupt.
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
 
 from langchain_core.runnables.config import RunnableConfig
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.errors import GraphInterrupt
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import Command, CompiledStateGraph
@@ -43,7 +44,6 @@ _REPAIR_SYSTEM = (
     "You are a Python debugging assistant. You fix the given code so it runs without error and prints output. "
     "Return ONLY the corrected, complete Python code."
 )
-_CHECKPOINTER = MemorySaver()
 _GRAPH: CompiledStateGraph | None = None
 
 
@@ -490,6 +490,23 @@ def _approval_gate_node(state: PipelineState) -> Command:
     return Command(update={"review_status": "approved"}, goto=END)
 
 
+def _build_checkpointer() -> SqliteSaver:
+    """Create a file-backed checkpointer on the shared job-store volume.
+
+    A persistent SQLite saver (not an in-memory one) is required so a graph
+    interrupt saved by the Celery worker process is visible when the API process
+    resumes it at the human-approval gate. The DB lives on the ``./data`` volume
+    shared by the backend and worker containers.
+    """
+    db_path = Path(settings.CHECKPOINT_DB_PATH)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(str(db_path), check_same_thread=False)
+    connection.execute("PRAGMA journal_mode=WAL")
+    checkpointer = SqliteSaver(connection)
+    checkpointer.setup()
+    return checkpointer
+
+
 def _build_graph() -> CompiledStateGraph:
     """Compile the stateful video pipeline graph with its checkpointer."""
     graph = StateGraph(PipelineState)
@@ -526,7 +543,7 @@ def _build_graph() -> CompiledStateGraph:
     graph.add_edge("web_describe", "web_script")
     graph.add_edge("web_script", "web_visual_planning")
     graph.add_edge("web_visual_planning", "approval_gate")
-    return graph.compile(checkpointer=_CHECKPOINTER, name="Educational Video Pipeline")
+    return graph.compile(checkpointer=_build_checkpointer(), name="Educational Video Pipeline")
 
 
 def _get_graph() -> CompiledStateGraph:
