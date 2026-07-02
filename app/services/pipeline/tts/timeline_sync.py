@@ -45,16 +45,10 @@ logger = structlog.get_logger(__name__)
 class TimelineEvent(BaseModel):
     """A single visual event on the code animation timeline."""
 
-    event_type: str = Field(
-        description="E.g. 'type_char', 'highlight_line', 'pause', 'clear'."
-    )
+    event_type: str = Field(description="E.g. 'type_char', 'highlight_line', 'pause', 'clear'.")
     timestamp: float = Field(description="Seconds from segment start.")
-    duration: Optional[float] = Field(
-        default=None, description="Event duration in seconds."
-    )
-    payload: Dict[str, Any] = Field(
-        default_factory=dict, description="Event-specific data."
-    )
+    duration: Optional[float] = Field(default=None, description="Event duration in seconds.")
+    payload: Dict[str, Any] = Field(default_factory=dict, description="Event-specific data.")
 
 
 class NarrationSegment(BaseModel):
@@ -98,7 +92,8 @@ def is_rtl(lang_code: str) -> bool:
 
 
 class TimelineSyncer:
-    """Synchronises visual events to measured TTS audio duration for each segment,
+    """Synchronises visual events to measured TTS audio duration for each segment.
+
     then stitches segments into a MasterTimeline.
     """
 
@@ -149,14 +144,10 @@ class TimelineSyncer:
         seg.audio_duration = measured
 
         if seg.events:
-            original_end = max(
-                (e.timestamp + (e.duration or 0)) for e in seg.events
-            )
+            original_end = max((e.timestamp + (e.duration or 0)) for e in seg.events)
             if original_end <= 0:
                 original_end = seg.original_duration_estimate or measured
-            factor = compute_stretch_factor(
-                actual_duration=original_end, target_duration=measured
-            )
+            factor = compute_stretch_factor(actual_duration=original_end, target_duration=measured)
             seg.stretch_factor = factor
             seg.events = _stretch_events(seg.events, factor)
             logger.info(
@@ -172,9 +163,7 @@ class TimelineSyncer:
 
         return seg
 
-    def build_master_timeline(
-        self, segments: List[NarrationSegment]
-    ) -> MasterTimeline:
+    def build_master_timeline(self, segments: List[NarrationSegment]) -> MasterTimeline:
         """Sync all segments, assign cumulative offsets, and stitch into one MasterTimeline.
 
         Args:
@@ -234,9 +223,7 @@ class TimelineSyncer:
                 for s in master.segments
             ],
         }
-        timings_path.write_text(
-            json.dumps(timings, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        timings_path.write_text(json.dumps(timings, indent=2, ensure_ascii=False), encoding="utf-8")
 
         logger.info("timeline_saved", master_timeline=str(master_path))
         logger.info("timeline_timings_saved", segment_timings=str(timings_path))
@@ -248,9 +235,7 @@ class TimelineSyncer:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _stretch_events(
-    events: List[TimelineEvent], factor: float
-) -> List[TimelineEvent]:
+def _stretch_events(events: List[TimelineEvent], factor: float) -> List[TimelineEvent]:
     """Return a new list of events with timestamps scaled by factor."""
     stretched: List[TimelineEvent] = []
     for ev in events:
@@ -273,16 +258,12 @@ def make_demo_segments() -> List[NarrationSegment]:
         TimelineEvent(event_type="type_char", timestamp=0.0, payload={"char": "d"}),
         TimelineEvent(event_type="type_char", timestamp=0.1, payload={"char": "e"}),
         TimelineEvent(event_type="type_char", timestamp=0.2, payload={"char": "f"}),
-        TimelineEvent(
-            event_type="highlight_line", timestamp=0.5, duration=1.0, payload={"line": 1}
-        ),
+        TimelineEvent(event_type="highlight_line", timestamp=0.5, duration=1.0, payload={"line": 1}),
         TimelineEvent(event_type="pause", timestamp=1.5, duration=0.5, payload={}),
     ]
 
     ar_events = [
-        TimelineEvent(
-            event_type="highlight_line", timestamp=0.0, duration=0.8, payload={"line": 2}
-        ),
+        TimelineEvent(event_type="highlight_line", timestamp=0.0, duration=0.8, payload={"line": 2}),
         TimelineEvent(event_type="type_char", timestamp=0.9, payload={"char": "م"}),
         TimelineEvent(event_type="type_char", timestamp=1.0, payload={"char": "ر"}),
         TimelineEvent(event_type="pause", timestamp=1.2, duration=0.4, payload={}),

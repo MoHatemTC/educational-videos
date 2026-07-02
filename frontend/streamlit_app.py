@@ -24,7 +24,7 @@ st.caption("Kimi K2.6 · ElevenLabs · Qdrant — topic → narrated code-tutori
 # ── Sidebar: new job + recent jobs ───────────────────────────────────────────
 with st.sidebar:
     st.header("New video")
-    
+
     mode = st.radio(
         "Video type",
         ["code_tutorial", "web_explainer"],
@@ -38,8 +38,8 @@ with st.sidebar:
         else:
             url = None
             topic = st.text_input("Topic", placeholder="e.g. Python list comprehensions")
-        
-        language = st.selectbox("Narration language", list(_LANG_LABELS), format_func=_LANG_LABELS.get)
+
+        language = st.selectbox("Narration language", list(_LANG_LABELS.keys()), format_func=lambda x: _LANG_LABELS[x])
         submitted = st.form_submit_button("Generate", type="primary", use_container_width=True)
 
     if submitted:

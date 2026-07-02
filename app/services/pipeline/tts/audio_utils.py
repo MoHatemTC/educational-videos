@@ -80,9 +80,20 @@ def _duration_mp3_frames(path: Path) -> Optional[float]:
     Returns None if the file contains no recognisable MPEG frames.
     """
     MPEG1_L3_BITRATES = {
-        1: 32, 2: 40, 3: 48, 4: 56, 5: 64, 6: 80,
-        7: 96, 8: 112, 9: 128, 10: 160, 11: 192, 12: 224,
-        13: 256, 14: 320,
+        1: 32,
+        2: 40,
+        3: 48,
+        4: 56,
+        5: 64,
+        6: 80,
+        7: 96,
+        8: 112,
+        9: 128,
+        10: 160,
+        11: 192,
+        12: 224,
+        13: 256,
+        14: 320,
     }
     SAMPLES_PER_FRAME = 1152
     SAMPLE_RATE = 44100
@@ -92,7 +103,7 @@ def _duration_mp3_frames(path: Path) -> Optional[float]:
     i = 0
     while i < len(data) - 4:
         if data[i] == 0xFF and (data[i + 1] & 0xE0) == 0xE0:
-            header = struct.unpack(">I", data[i: i + 4])[0]
+            header = struct.unpack(">I", data[i : i + 4])[0]
             bitrate_idx = (header >> 12) & 0xF
             bitrate = MPEG1_L3_BITRATES.get(bitrate_idx)
             if bitrate:

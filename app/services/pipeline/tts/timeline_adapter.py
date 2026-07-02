@@ -34,7 +34,6 @@ from app.core.schemas import (
 from app.services.pipeline.tts.timeline_sync import (
     MasterTimeline,
     NarrationSegment,
-    TimelineEvent,
 )
 
 _TRAILING_TYPE_BUFFER_S = 0.1
@@ -79,9 +78,7 @@ def _segment_to_shared_events(
                 code_chars.append(events[j].payload.get("char", ""))
                 j += 1
 
-            run_end_source = (
-                events[j].timestamp if j < n else run_start + _TRAILING_TYPE_BUFFER_S
-            )
+            run_end_source = events[j].timestamp if j < n else run_start + _TRAILING_TYPE_BUFFER_S
             if run_end_source <= run_start:
                 run_end_source = run_start + _TRAILING_TYPE_BUFFER_S
 
@@ -99,9 +96,7 @@ def _segment_to_shared_events(
         if ev.event_type == "highlight_line":
             line = ev.payload.get("line")
             if line is None:
-                raise ValueError(
-                    f"segment {segment.segment_id}: highlight_line missing 'line' in payload"
-                )
+                raise ValueError(f"segment {segment.segment_id}: highlight_line missing 'line' in payload")
             duration = ev.duration if ev.duration is not None else 0.001
             out.append(
                 HighlightEvent(

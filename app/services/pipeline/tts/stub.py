@@ -29,19 +29,19 @@ logger = structlog.get_logger(__name__)
 # ── Voice map (stub only — production uses settings.ELEVENLABS_VOICE_ID_*) ──
 
 _VOICE_MAP: dict[str, str] = {
-    "en": "21m00Tcm4TlvDq8ikWAM",   # Rachel — English
-    "ar": "ErXwobaYiN019PkySvjV",   # Antoni — Arabic
-    "fr": "MF3mGyEYCl7XYWbV9V6O",   # Elli — French
-    "de": "AZnzlk1XvdvUeBnXmlld",   # Domi — German
-    "es": "EXAVITQu4vr4xnSDxMaL",   # Bella — Spanish
-    "ja": "jBpfuIE2acCO8z3wKNLl",   # Gigi — Japanese
+    "en": "21m00Tcm4TlvDq8ikWAM",  # Rachel — English
+    "ar": "ErXwobaYiN019PkySvjV",  # Antoni — Arabic
+    "fr": "MF3mGyEYCl7XYWbV9V6O",  # Elli — French
+    "de": "AZnzlk1XvdvUeBnXmlld",  # Domi — German
+    "es": "EXAVITQu4vr4xnSDxMaL",  # Bella — Spanish
+    "ja": "jBpfuIE2acCO8z3wKNLl",  # Gigi — Japanese
     # "zh" removed: was silently using the Japanese voice (bug #17).
     # Unknown languages fall back to English below.
 }
 
 # Minimal silent MPEG-1 Layer-3 frame (ID3 header + one silent frame).
 _SILENT_MP3_BASE = bytes.fromhex(
-    "494433030000000000"   # ID3v2.3 header (9 bytes)
+    "494433030000000000"  # ID3v2.3 header (9 bytes)
     "fffb9000" + "00" * 413  # MPEG frame header + silent payload
 )
 

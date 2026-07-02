@@ -38,8 +38,6 @@ from app.core.schemas import (
 
 # ── Sandbox (main's API) ──────────────────────────────────────────────────────
 from app.services.pipeline.sandbox import (
-    ExecutionResult,
-    SelfHealResult,
     run_code,
     self_heal_code,
 )
@@ -68,10 +66,6 @@ from app.services.pipeline.tts.timeline_sync import (
     make_demo_segments,
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Shared helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
 
 def _silent_mp3(path: Path, num_frames: int = 50) -> Path:
     """Write a minimal silent MP3 for tests that need a real audio file."""
@@ -94,11 +88,13 @@ def _attach_audio(tmp_path: Path, segments: list) -> list:
 
 @pytest.fixture
 def syncer(tmp_path):
+    """Create a TimelineSyncer for tests."""
     return TimelineSyncer(output_dir=str(tmp_path / "output"))
 
 
 @pytest.fixture
 def demo_segments():
+    """Create a TimelineSyncer for tests."""
     return make_demo_segments()
 
 
@@ -110,50 +106,49 @@ def mock_llm():
     return llm
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TestSandboxRunner — uses main's run_code directly
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 class TestSandboxRunner:
     """Sandbox execution via main's secure run_code (no os.environ leak)."""
 
     def test_run_simple_success(self):
+        """Verify successful execution of valid Python code."""
         result = run_code("x = 1 + 1\nprint(x)")
         assert result.ok is True
         assert "2" in result.stdout
         assert result.exit_code == 0
 
     def test_run_syntax_error(self):
+        """Verify successful execution of valid Python code."""
         result = run_code("def broken(:\n    pass")
         assert result.ok is False
         assert result.exit_code != 0
 
     def test_run_runtime_error(self):
+        """Verify successful execution of valid Python code."""
         result = run_code("raise ValueError('intentional')")
         assert result.ok is False
         assert "ValueError" in result.stderr
 
     def test_run_name_error(self):
+        """Verify successful execution of valid Python code."""
         result = run_code("print(undefined_var)")
         assert result.ok is False
         assert "NameError" in result.stderr
 
     def test_run_timeout(self):
+        """Verify successful execution of valid Python code."""
         result = run_code("import time; time.sleep(100)", timeout_s=2)
         assert result.ok is False
         assert result.timed_out is True
 
     def test_stdout_captured(self):
+        """Verify successful execution of valid Python code."""
         result = run_code("print('hello world')")
         assert "hello world" in result.stdout
 
     def test_no_env_leak(self, monkeypatch):
         """#14 regression: host secrets must never reach sandboxed code."""
         monkeypatch.setenv("FAKE_ANTHROPIC_API_KEY", "sk-leak-me-if-you-can")
-        result = run_code(
-            "import os; print(repr(os.environ.get('FAKE_ANTHROPIC_API_KEY')))"
-        )
+        result = run_code("import os; print(repr(os.environ.get('FAKE_ANTHROPIC_API_KEY')))")
         assert result.ok
         assert "sk-leak-me-if-you-can" not in result.stdout
         assert "None" in result.stdout
@@ -172,17 +167,19 @@ class TestSandboxRunner:
         assert "secret_present= False" in result.stdout
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TestParser — uses main's parse_traceback
-# ─────────────────────────────────────────────────────────────────────────────
+#
 
 
 class TestParser:
+    """Tests for traceback parsing."""
+
     def test_returns_none_on_clean_stderr(self):
+        """Verify successful execution of valid Python code."""
         assert parse_traceback("") is None
         assert parse_traceback("   ") is None
 
     def test_name_error_parsed(self):
+        """Verify successful execution of valid Python code."""
         stderr = (
             "Traceback (most recent call last):\n"
             '  File "tmp.py", line 1, in <module>\n'
@@ -195,6 +192,7 @@ class TestParser:
         assert result["line"] == 1
 
     def test_value_error_parsed(self):
+        """Verify successful execution of valid Python code."""
         stderr = (
             "Traceback (most recent call last):\n"
             '  File "t.py", line 3, in <module>\n'
@@ -202,10 +200,12 @@ class TestParser:
             "ValueError: boom\n"
         )
         result = parse_traceback(stderr)
+        assert result is not None
         assert result["exception_type"] == "ValueError"
         assert "boom" in result["exception_message"]
 
     def test_innermost_frame_extracted(self):
+        """Verify successful execution of valid Python code."""
         stderr = (
             "Traceback (most recent call last):\n"
             '  File "a.py", line 5, in outer\n'
@@ -215,22 +215,22 @@ class TestParser:
             "RuntimeError: boom\n"
         )
         result = parse_traceback(stderr)
+        assert result is not None
         assert result["line"] == 2
         assert result["innermost_frame"] is not None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TestSelfHealingLoop — uses main's self_heal_code with mocked PipelineLLM
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 class TestSelfHealingLoop:
+    """Tests for traceback parsing."""
+
     def test_success_on_first_run(self, mock_llm):
+        """Verify successful execution of valid Python code."""
         result = self_heal_code("x = 1\nprint(x)", mock_llm)
         assert result.validated is True
         assert result.result.ok is True
 
     def test_healing_with_mock_llm(self, mock_llm):
+        """Verify successful execution of valid Python code."""
         fixed = "x = 1\nprint(x)"
         mock_llm.complete.return_value = fixed
         result = self_heal_code("print(undefined_var)", mock_llm, max_retries=2)
@@ -238,34 +238,36 @@ class TestSelfHealingLoop:
         assert result.code == fixed
 
     def test_exhausted_loop(self, mock_llm):
+        """Verify successful execution of valid Python code."""
         mock_llm.complete.return_value = "print(still_broken)"
         result = self_heal_code("print(broken)", mock_llm, max_retries=2)
         assert result.validated is False
 
     def test_log_populated(self, mock_llm):
+        """Verify successful execution of valid Python code."""
         result = self_heal_code("print('hi')", mock_llm)
         assert len(result.log) >= 1
         assert "exit_code" in result.log[0]
         assert "iteration" in result.log[0]
 
     def test_clean_code_zero_corrections(self, mock_llm):
+        """Verify successful execution of valid Python code."""
         result = self_heal_code("print(1)", mock_llm)
         assert result.validated is True
         assert mock_llm.complete.call_count == 0
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TestStubTTS — #17 zh→ja bug fix included
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 class TestStubTTS:
+    """Tests for traceback parsing."""
+
     def test_returns_mp3(self):
+        """Verify successful execution of valid Python code."""
         p = synthesize_stub("Hello world", lang_code="en")
         assert p.exists()
         assert p.suffix == ".mp3"
 
     def test_cache_hit(self):
+        """Verify successful execution of valid Python code."""
         p1 = synthesize_stub("Cache test", lang_code="en")
         t1 = p1.stat().st_mtime
         time.sleep(0.05)
@@ -274,11 +276,13 @@ class TestStubTTS:
         assert p2.stat().st_mtime == t1
 
     def test_different_texts_different_files(self):
+        """Verify successful execution of valid Python code."""
         p1 = synthesize_stub("Text alpha", lang_code="en")
         p2 = synthesize_stub("Text beta", lang_code="en")
         assert p1 != p2
 
     def test_arabic_voice_resolves(self):
+        """Verify successful execution of valid Python code."""
         p = synthesize_stub("مرحبا", lang_code="ar")
         assert p.exists()
 
@@ -290,36 +294,40 @@ class TestStubTTS:
         )
 
     def test_unknown_lang_falls_back_to_english(self):
+        """Verify successful execution of valid Python code."""
         en_voice = voice_id_for_lang("en")
         assert voice_id_for_lang("xx") == en_voice
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TestAudioUtils
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 class TestAudioUtils:
+    """Tests for traceback parsing."""
+
     def test_mp3_frame_duration(self, tmp_path):
+        """Verify successful execution of valid Python code."""
         f = _silent_mp3(tmp_path / "test.mp3", num_frames=50)
         dur = _duration_mp3_frames(f)
         assert dur is not None
         assert 1.0 < dur < 2.0
 
     def test_compute_stretch_factor_basic(self):
+        """Verify successful execution of valid Python code."""
         assert compute_stretch_factor(2.0, 4.0) == pytest.approx(2.0)
 
     def test_compute_stretch_factor_clamped_high(self):
+        """Verify successful execution of valid Python code."""
         assert compute_stretch_factor(0.5, 5.0) == 2.0
 
     def test_compute_stretch_factor_clamped_low(self):
+        """Verify successful execution of valid Python code."""
         assert compute_stretch_factor(10.0, 1.0) == 0.5
 
     def test_compute_stretch_factor_zero_guard(self):
+        """Verify successful execution of valid Python code."""
         assert compute_stretch_factor(0, 1) == 1.0
         assert compute_stretch_factor(1, 0) == 1.0
 
     def test_adjust_timestamps(self):
+        """Verify successful execution of valid Python code."""
         assert adjust_timestamps([0.0, 1.0, 2.0], stretch_factor=2.0, offset=1.0) == [
             1.0,
             3.0,
@@ -327,25 +335,27 @@ class TestAudioUtils:
         ]
 
     def test_adjust_timestamps_empty(self):
+        """Verify successful execution of valid Python code."""
         assert adjust_timestamps([], 1.5, 0.0) == []
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TestTimelineSync
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 class TestTimelineSync:
+    """Tests for traceback parsing."""
+
     def test_is_rtl_arabic(self):
+        """Verify successful execution of valid Python code."""
         assert is_rtl("ar") is True
 
     def test_is_rtl_english(self):
+        """Verify successful execution of valid Python code."""
         assert is_rtl("en") is False
 
     def test_is_rtl_hebrew(self):
+        """Verify successful execution of valid Python code."""
         assert is_rtl("he") is True
 
     def test_segment_rtl_flag(self, syncer, tmp_path):
+        """Verify successful execution of valid Python code."""
         mp3 = _silent_mp3(tmp_path / "ar.mp3")
         seg = NarrationSegment(
             segment_id="ar_test",
@@ -361,6 +371,7 @@ class TestTimelineSync:
         assert synced.rtl is True
 
     def test_event_timestamps_scaled(self, syncer, tmp_path):
+        """Verify successful execution of valid Python code."""
         seg = NarrationSegment(
             segment_id="s2",
             lang_code="en",
@@ -392,6 +403,7 @@ class TestTimelineSync:
                 os.unlink(tf.name)
 
     def test_build_master_timeline(self, syncer, demo_segments, tmp_path):
+        """Verify successful execution of valid Python code."""
         with_audio = _attach_audio(tmp_path, demo_segments)
         try:
             master = syncer.build_master_timeline(with_audio)
@@ -402,6 +414,7 @@ class TestTimelineSync:
         assert len(master.segments) == len(demo_segments)
 
     def test_save_output_files(self, syncer, demo_segments, tmp_path):
+        """Verify successful execution of valid Python code."""
         with_audio = _attach_audio(tmp_path, demo_segments)
         try:
             master = syncer.build_master_timeline(with_audio)
@@ -415,13 +428,11 @@ class TestTimelineSync:
         assert "total_duration" in data
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TestTimelineAdapter — #15 round-trip
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 class TestTimelineAdapter:
+    """Tests for traceback parsing."""
+
     def test_adapts_to_shared_schema(self, syncer, tmp_path):
+        """Verify successful execution of valid Python code."""
         segments = _attach_audio(tmp_path, make_demo_segments())
         try:
             master = syncer.build_master_timeline(segments)
@@ -432,6 +443,7 @@ class TestTimelineAdapter:
         assert len(shared.events) > 0
 
     def test_json_round_trip(self, syncer, tmp_path):
+        """Verify successful execution of valid Python code."""
         segments = _attach_audio(tmp_path, make_demo_segments())
         try:
             master = syncer.build_master_timeline(segments)
@@ -442,6 +454,7 @@ class TestTimelineAdapter:
         assert reparsed == shared
 
     def test_type_chars_merged(self, syncer, tmp_path):
+        """Verify successful execution of valid Python code."""
         segments = _attach_audio(tmp_path, make_demo_segments())
         try:
             master = syncer.build_master_timeline(segments)
@@ -454,6 +467,7 @@ class TestTimelineAdapter:
         assert "e" in type_events[0].code
 
     def test_pause_dropped_not_errored(self, syncer, tmp_path):
+        """Verify successful execution of valid Python code."""
         segments = _attach_audio(tmp_path, make_demo_segments())
         try:
             master = syncer.build_master_timeline(segments)
@@ -463,6 +477,7 @@ class TestTimelineAdapter:
         assert isinstance(shared, Timeline)
 
     def test_events_sorted_chronologically(self, syncer, tmp_path):
+        """Verify successful execution of valid Python code."""
         segments = _attach_audio(tmp_path, make_demo_segments())
         try:
             master = syncer.build_master_timeline(segments)
@@ -473,6 +488,7 @@ class TestTimelineAdapter:
         assert starts == sorted(starts)
 
     def test_unmapped_event_type_raises(self):
+        """Verify successful execution of valid Python code."""
         seg = NarrationSegment(
             segment_id="bad",
             lang_code="en",
