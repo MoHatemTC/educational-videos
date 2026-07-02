@@ -11,6 +11,7 @@ wheels/
 *venv/
 
 # IDE files
+.vscode/
 .idea/
 
 # Environment variables

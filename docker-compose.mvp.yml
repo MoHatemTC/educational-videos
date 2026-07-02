@@ -44,7 +44,6 @@ services:
       - "8000:8000"
     volumes:
       - ./app:/app/app
-      - ./vlm_render_mapper:/app/vlm_render_mapper
       - ./data:/app/data
       - ./output:/app/output
     depends_on:
@@ -81,7 +80,6 @@ services:
     shm_size: "1gb"
     volumes:
       - ./app:/app/app
-      - ./vlm_render_mapper:/app/vlm_render_mapper
       - ./data:/app/data
       - ./output:/app/output
     depends_on:
