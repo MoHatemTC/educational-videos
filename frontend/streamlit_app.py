@@ -24,20 +24,24 @@ st.caption("Kimi K2.6 · ElevenLabs · Qdrant — topic → narrated code-tutori
 # ── Sidebar: new job + recent jobs ───────────────────────────────────────────
 with st.sidebar:
     st.header("New video")
+    
+    mode = st.radio(
+        "Video type",
+        ["code_tutorial", "web_explainer"],
+        format_func=lambda m: "💻 Code tutorial" if m == "code_tutorial" else "🌐 Explain a web page",
+    )
+
     with st.form("new_job", clear_on_submit=False):
-        mode = st.radio(
-            "Video type",
-            ["code_tutorial", "web_explainer"],
-            format_func=lambda m: "💻 Code tutorial" if m == "code_tutorial" else "🌐 Explain a web page",
-        )
         if mode == "web_explainer":
             url = st.text_input("Page URL", placeholder="https://www.noon.com")
             topic = st.text_input("Title", placeholder="noon.com homepage")
         else:
             url = None
             topic = st.text_input("Topic", placeholder="e.g. Python list comprehensions")
+        
         language = st.selectbox("Narration language", list(_LANG_LABELS), format_func=_LANG_LABELS.get)
-        submitted = st.form_submit_button("Generate", type="primary", width="stretch")
+        submitted = st.form_submit_button("Generate", type="primary", use_container_width=True)
+
     if submitted:
         title = (topic or "").strip() or (url or "").strip()
         if mode == "web_explainer" and not (url or "").strip():
@@ -49,7 +53,7 @@ with st.sidebar:
                 res = api.create_job(title, language, mode=mode, url=url)
                 st.session_state.job_id = res["job_id"]
                 st.rerun()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 st.error(f"Failed to start job: {exc}")
 
     st.divider()
